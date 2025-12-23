@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Size-Up Builder (Smart Board)</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #121a2b;
+      --panel2: #0f1729;
+      --text: #e9eefc;
+      --muted: #a7b2d6;
+      --accent: #2dd4bf;
+      --accent2: #60a5fa;
+      --danger: #fb7185;
+      --shadow: rgba(0,0,0,0.35);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 20% 10%, #172554 0%, var(--bg) 50%) fixed;
+      color: var(--text);
+    }
+
+    header {
+      padding: 18px 22px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 {
+      font-size: 18px;
+      margin: 0;
+      letter-spacing: 0.3px;
+    }
+    header .hint {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .wrap {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+      padding: 0 18px 18px;
+      height: calc(100vh - 70px);
+    }
+
+    .left, .right {
+      background: rgba(18, 26, 43, 0.75);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 30px var(--shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .section-title {
+      padding: 14px 16px;
+      background: rgba(15, 23, 41, 0.8);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .section-title h2 {
+      margin: 0;
+      font-size: 14px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .pill {
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--muted);
+      background: rgba(255,255,255,0.04);
+      user-select: none;
+    }
+
+    .controls {
+      padding: 12px 14px 14px;
+      display: grid;
+      gap: 14px;
+      overflow: auto;
+    }
+
+    .group {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .group-header .label {
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .group-header .small {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    button.choice {
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 14px 12px;
+      border-radius: 14px;
+      font-size: 18px;         /* BIG for smart boards */
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+      transition: transform 0.05s ease, background 0.15s ease, border 0.15s ease;
+      user-select: none;
+      touch-action: manipulation;
+    }
+    button.choice:active { transform: scale(0.98); }
+    button.choice.selected {
+      border-color: rgba(45, 212, 191, 0.85);
+      background: rgba(45, 212, 191, 0.18);
+      box-shadow: 0 10px 24px rgba(45, 212, 191, 0.18);
+    }
+    button.choice.secondary.selected {
+      border-color: rgba(96, 165, 250, 0.9);
+      background: rgba(96, 165, 250, 0.18);
+      box-shadow: 0 10px 24px rgba(96, 165, 250, 0.16);
+    }
+
+    .right .output {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow: auto;
+      min-height: 0;
+    }
+
+    .textbox {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 18px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      min-height: 180px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .btn {
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 14px 12px;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      user-select: none;
+    }
+    .btn.primary { border-color: rgba(45, 212, 191, 0.65); background: rgba(45, 212, 191, 0.14); }
+    .btn.danger  { border-color: rgba(251, 113, 133, 0.7); background: rgba(251, 113, 133, 0.12); }
+
+    .note {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 980px) {
+      .wrap { grid-template-columns: 1fr; height: auto; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Size-Up Builder (Smart Board Prototype)</h1>
+      <div class="hint">Tap selections → paragraph updates live → Copy to clipboard.</div>
+    </div>
+    <div class="pill" id="statusPill">Ready</div>
+  </header>
+
+  <div class="wrap">
+    <!-- LEFT: Controls -->
+    <section class="left">
+      <div class="section-title">
+        <h2>Worksheet Inputs</h2>
+        <div class="pill">Touch-friendly</div>
+      </div>
+
+      <div class="controls" id="controls"></div>
+    </section>
+
+    <!-- RIGHT: Output -->
+    <section class="right">
+      <div class="section-title">
+        <h2>Generated Size-Up</h2>
+        <div class="pill" id="countPill">0 fields selected</div>
+      </div>
+
+      <div class="output">
+        <div class="textbox" id="outputBox"></div>
+
+        <div class="row">
+          <button class="btn primary" id="copyBtn">Copy</button>
+          <button class="btn danger" id="clearBtn">Clear</button>
+        </div>
+
+        <div class="note">
+          To add more Blue Card fields, edit the <b>CONFIG</b> section in this file (look for “CONFIG – Add your fields here”).
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ================================
+    // CONFIG – Add your fields here
+    // ================================
+    // Each group becomes a set of buttons. "mode" can be:
+    // - "single"   -> one selection at a time (most worksheet fields)
+    // - "multi"    -> allow multiple selections (e.g., exposures A/B/C/D)
+    const CONFIG = [
+      {
+        key: "buildingSize",
+        title: "Building Size",
+        mode: "single",
+        style: "primary",
+        options: [
+          { value: "small",  label: "Small",  phrase: "a small" },
+          { value: "medium", label: "Medium", phrase: "a medium" },
+          { value: "large",  label: "Large",  phrase: "a large" },
+          { value: "mega",   label: "Mega",   phrase: "a mega" }
+        ]
+      },
+      {
+        key: "floors",
+        title: "Floors",
+        mode: "single",
+        style: "secondary",
+        options: [
+          { value: "1",   label: "1",   phrase: "one-story" },
+          { value: "2",   label: "2",   phrase: "two-story" },
+          { value: "3",   label: "3",   phrase: "three-story" },
+          { value: "4+",  label: "4+",  phrase: "multi-story" }
+        ]
+      },
+      {
+        key: "occupancy",
+        title: "Occupancy / Type",
+        mode: "single",
+        style: "primary",
+        options: [
+          { value: "house",       label: "House",       phrase: "single-family residence" },
+          { value: "apartment",   label: "Apartment",   phrase: "apartment complex" },
+          { value: "strip",       label: "Strip Ctr",   phrase: "strip center" },
+          { value: "bigbox",      label: "Big Box",     phrase: "big box commercial" },
+          { value: "office",      label: "Office",      phrase: "office building" },
+          { value: "warehouse",   label: "Warehouse",   phrase: "warehouse" }
+        ]
+      },
+      {
+        key: "fireLocation",
+        title: "Fire Location (example)",
+        mode: "single",
+        style: "secondary",
+        options: [
+          { value: "nothing", label: "None", phrase: "" },
+          { value: "alpha",   label: "Alpha", phrase: "Fire is showing on the Alpha side." },
+          { value: "bravo",   label: "Bravo", phrase: "Fire is showing on the Bravo side." },
+          { value: "charlie", label: "Charlie", phrase: "Fire is showing on the Charlie side." },
+          { value: "delta",   label: "Delta", phrase: "Fire is showing on the Delta side." },
+          { value: "roof",    label: "Roof", phrase: "Fire is involving the roof area." }
+        ]
+      },
+      {
+        key: "access",
+        title: "Access (example)",
+        mode: "single",
+        style: "primary",
+        options: [
+          { value: "alpha", label: "Alpha", phrase: "Primary access will be from the Alpha side." },
+          { value: "bravo", label: "Bravo", phrase: "Primary access will be from the Bravo side." },
+          { value: "charlie", label: "Charlie", phrase: "Primary access will be from the Charlie side." },
+          { value: "delta", label: "Delta", phrase: "Primary access will be from the Delta side." }
+        ]
+      }
+    ];
+
+    // ================================
+    // State
+    // ================================
+    const state = {}; // key -> value OR array of values for multi
+
+    const controlsEl = document.getElementById("controls");
+    const outputBox = document.getElementById("outputBox");
+    const statusPill = document.getElementById("statusPill");
+    const countPill = document.getElementById("countPill");
+    const copyBtn = document.getElementById("copyBtn");
+    const clearBtn = document.getElementById("clearBtn");
+
+    function init() {
+      renderControls();
+      updateOutput();
+      copyBtn.addEventListener("click", copyToClipboard);
+      clearBtn.addEventListener("click", clearAll);
+    }
+
+    function renderControls() {
+      controlsEl.innerHTML = "";
+      CONFIG.forEach(group => {
+        const groupEl = document.createElement("div");
+        groupEl.className = "group";
+
+        const header = document.createElement("div");
+        header.className = "group-header";
+        header.innerHTML = `
+          <div class="label">${group.title}</div>
+          <div class="small">${group.mode === "multi" ? "Multi-select" : "Single-select"}</div>
+        `;
+        groupEl.appendChild(header);
+
+        const grid = document.createElement("div");
+        grid.className = "grid";
+
+        group.options.forEach(opt => {
+          const btn = document.createElement("button");
+          btn.className = `choice ${group.style === "secondary" ? "secondary" : ""}`;
+          btn.textContent = opt.label;
+          btn.dataset.key = group.key;
+          btn.dataset.value = opt.value;
+
+          btn.addEventListener("click", () => onChoice(group, opt.value));
+          grid.appendChild(btn);
+        });
+
+        groupEl.appendChild(grid);
+        controlsEl.appendChild(groupEl);
+      });
+
+      refreshSelectedUI();
+    }
+
+    function onChoice(group, value) {
+      if (group.mode === "single") {
+        state[group.key] = value;
+      } else {
+        const current = Array.isArray(state[group.key]) ? state[group.key] : [];
+        state[group.key] = current.includes(value)
+          ? current.filter(v => v !== value)
+          : [...current, value];
+      }
+      refreshSelectedUI();
+      updateOutput();
+    }
+
+    function refreshSelectedUI() {
+      document.querySelectorAll("button.choice").forEach(btn => {
+        const key = btn.dataset.key;
+        const value = btn.dataset.value;
+        const group = CONFIG.find(g => g.key === key);
+        const current = state[key];
+
+        let selected = false;
+        if (group.mode === "single") selected = current === value;
+        else selected = Array.isArray(current) && current.includes(value);
+
+        btn.classList.toggle("selected", selected);
+      });
+    }
+
+    function updateOutput() {
+      // Build the opening sentence: size + floors + occupancy
+      const sizePhrase = phraseFor("buildingSize");
+      const floorsPhrase = phraseFor("floors");
+      const occPhrase = phraseFor("occupancy");
+
+      // Make opening line clean (skip blanks)
+      const openingParts = [];
+      if (sizePhrase) openingParts.push(sizePhrase);
+      if (floorsPhrase) openingParts.push(floorsPhrase);
+      if (occPhrase) openingParts.push(occPhrase);
+
+      let paragraph = "";
+      if (openingParts.length) {
+        // Example: "We have a medium, two-story strip center."
+        paragraph += `We have ${openingParts.join(", ")}.`;
+      } else {
+        paragraph += "We have a structure.";
+      }
+
+      // Add additional sentences (like fire location, access, etc.)
+      const extraSentences = [];
+      const fireSentence = sentenceFor("fireLocation");
+      const accessSentence = sentenceFor("access");
+
+      if (fireSentence) extraSentences.push(fireSentence);
+      if (accessSentence) extraSentences.push(accessSentence);
+
+      if (extraSentences.length) {
+        paragraph += "\n\n" + extraSentences.join(" ");
+      }
+
+      outputBox.textContent = paragraph;
+
+      const count = countSelectedFields();
+      countPill.textContent = `${count} field${count === 1 ? "" : "s"} selected`;
+      statusPill.textContent = count ? "Building size-up…" : "Ready";
+    }
+
+    function phraseFor(key) {
+      const group = CONFIG.find(g => g.key === key);
+      if (!group) return "";
+      const val = state[key];
+      if (!val) return "";
+      const opt = group.options.find(o => o.value === val);
+      return opt?.phrase || "";
+    }
+
+    function sentenceFor(key) {
+      // Uses the same "phrase" field, but expects it to already be a full sentence
+      const group = CONFIG.find(g => g.key === key);
+      if (!group) return "";
+      const val = state[key];
+      if (!val) return "";
+      const opt = group.options.find(o => o.value === val);
+      const s = (opt?.phrase || "").trim();
+      // Only treat it as a sentence if it looks like one
+      return s && /[.!?]$/.test(s) ? s : (s ? s + "." : "");
+    }
+
+    function countSelectedFields() {
+      let count = 0;
+      CONFIG.forEach(g => {
+        const v = state[g.key];
+        if (g.mode === "single") { if (v) count++; }
+        else { if (Array.isArray(v) && v.length) count++; }
+      });
+      return count;
+    }
+
+    async function copyToClipboard() {
+      const text = outputBox.textContent || "";
+      try {
+        await navigator.clipboard.writeText(text);
+        statusPill.textContent = "Copied!";
+        setTimeout(() => (statusPill.textContent = "Ready"), 900);
+      } catch {
+        // Fallback for older setups
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        statusPill.textContent = "Copied!";
+        setTimeout(() => (statusPill.textContent = "Ready"), 900);
+      }
+    }
+
+    function clearAll() {
+      Object.keys(state).forEach(k => delete state[k]);
+      refreshSelectedUI();
+      updateOutput();
+      statusPill.textContent = "Cleared";
+      setTimeout(() => (statusPill.textContent = "Ready"), 900);
+    }
+
+    init();
+  </script>
+</body>
+</html>
