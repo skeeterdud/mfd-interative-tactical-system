@@ -1,1 +1,67 @@
+.screen{
+  padding:14px;
+}
+
+.card{
+  background:#0b1a3add;
+  border-radius:12px;
+  padding:12px;
+  margin-bottom:10px;
+}
+
+.pill{
+  border:2px solid #2563eb;
+  background:white;
+  color:#0b1220;
+  border-radius:999px;
+  padding:8px 14px;
+  margin:6px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.pill.selected{
+  color:#2563eb;
+  border-color:#2563eb;
+  background:white;
+}
+
+.primary{
+  background:#2563eb;
+  color:white;
+  border-radius:10px;
+  padding:12px 16px;
+  float:right;
+}
+
+.units-tab{
+  position:relative;
+}
+
+.units-header{
+  background:#0b1a3a;
+  padding:10px;
+  border-radius:10px;
+  text-align:center;
+  cursor:pointer;
+}
+
+.units-drawer{
+  display:none;
+  background:#0b1a3a99;
+  border-radius:10px;
+  margin-top:6px;
+  padding:10px;
+}
+
+.units-tab.open .units-drawer{
+  display:block;
+}
+
+.canvas{
+  background:#0b1a3a55;
+  border-radius:12px;
+  height:60vh;
+  margin-top:10px;
+}
 
