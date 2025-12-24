@@ -388,3 +388,12 @@ function attachScreenHandlers(state) {
     attachTacticalHandlers(state);
   }
 }
+
+function renderApp() {
+  const root = document.getElementById("app");
+  if (appState.screen === "setup") {
+    renderSetupScreen(root);
+  } else if (appState.screen === "ops") {
+    renderOpsScreen(root);
+  }
+}
