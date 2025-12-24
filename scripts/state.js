@@ -9,6 +9,48 @@ export const UNIT_TYPES = {
   OTHER: "other",
 };
 
+const BATTALIONS = ["BC1", "BC2"];
+const CALL_TYPES = ["Fire", "Accident", "Large Scale Event (EMS/RTF)"];
+const UNITS = [
+  "Trk 1","Eng 2","Trk 3","Eng 4","Trk 5",
+  "Eng 6","Eng 7","Trk 9","Eng 10","Trk 11",
+  "Med 1","Med 2","Med 3","Med 5","Med 6",
+  "Med 7","Med 9","Med 10","Med 11"
+];
+
+const appState = {
+  screen: "setup",
+  setup: {
+    battalion: null,
+    callType: null,
+    units: []
+  },
+  // ...other stuff for later screens
+};
+
+function setBattalion(id) {
+  appState.setup.battalion = id;
+  renderApp();
+}
+
+function setCallType(type) {
+  appState.setup.callType = type;
+  renderApp();
+}
+
+function toggleUnit(unitId) {
+  const list = appState.setup.units;
+  const idx = list.indexOf(unitId);
+  if (idx === -1) list.push(unitId);
+  else list.splice(idx, 1);
+  renderApp();
+}
+
+function goToScreen(screen) {
+  appState.screen = screen;
+  renderApp();
+}
+
 export const ALL_UNITS = [
   { id: "TRK1", label: "Trk 1", type: UNIT_TYPES.TRUCK },
   { id: "ENG2", label: "Eng 2", type: UNIT_TYPES.ENGINE },
