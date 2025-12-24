@@ -3,15 +3,26 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <title>MFD Interactive Tactical System</title>
-  <link rel="stylesheet" href="./style.css" />
+
+  <!-- Theme -->
+  <meta name="theme-color" content="#0b1a3a" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles/style.css" />
 </head>
+
 <body>
-  <!-- This is where app.js mounts everything -->
+
+  <!-- Main App Root -->
   <div id="app"></div>
 
-  <!-- IMPORTANT: type="module" so imports work -->
-  <script type="module" src="./app.js"></script>
+  <!-- App Scripts (order matters) -->
+  <script src="scripts/state.js"></script>
+  <script src="scripts/components.js"></script>
+  <script src="scripts/canvas.js"></script>
+  <script src="scripts/app.js"></script>
+
 </body>
 </html>
-
