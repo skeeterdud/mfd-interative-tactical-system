@@ -1,90 +1,143 @@
-import { appState } from "../state.js";
-import { ALL_UNITS } from "../data/units.js";
+// Components/SetupScreens.js
+// Incident Setup screen using pill buttons instead of dropdowns
 
-export function SetupScreen(onStartIncident){
-  
-  const container = document.createElement("div");
-  container.className = "screen setup-screen";
+// expects from state.js:
+// - appState
+// - BATTALIONS, CALL_TYPES, UNITS
+// - setBattalion(id), setCallType(type), toggleUnit(unitId), goToScreen(screenKey)
 
-  // Title
-  const title = document.createElement("h2");
+/**
+ * Helper: create a pill button
+ */
+function createPill(label, isSelected, onClick) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "pill";
+  if (isSelected) btn.classList.add("is-selected");
+  btn.textContent = label;
+  btn.addEventListener("click", onClick);
+  return btn;
+}
+
+/**
+ * Main render function for Screen A – Incident Setup
+ */
+function renderSetupScreen(rootEl) {
+  const setup = appState.setup || {};
+
+  // Clear root
+  rootEl.innerHTML = "";
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "incident-setup";
+
+  // Header
+  const header = document.createElement("div");
+  header.className = "incident-setup-header";
+
+  const title = document.createElement("div");
+  title.className = "incident-setup-title";
   title.textContent = "Incident Setup";
-  container.appendChild(title);
 
-  // Call Type
-  const callWrap = document.createElement("div");
-  callWrap.className = "card";
-  callWrap.innerHTML = `<h3>Call Type</h3>`;
-  container.appendChild(callWrap);
+  const subtitle = document.createElement("div");
+  subtitle.className = "incident-setup-subtitle";
+  subtitle.textContent = "Select battalion, call type, and units responding.";
 
-  ["Fire","Accident","Large Scale Event"].forEach(type => {
-    const btn = document.createElement("button");
-    btn.className = "pill";
-    btn.textContent = type;
-    btn.onclick = () => {
-      appState.callType = type;
-      refresh();
-    };
-    callWrap.appendChild(btn);
-  });
+  header.appendChild(title);
+  header.appendChild(subtitle);
+  wrapper.appendChild(header);
 
-  // Battalion
-  const battWrap = document.createElement("div");
-  battWrap.className = "card";
-  battWrap.innerHTML = `<h3>Battalion</h3>`;
-  container.appendChild(battWrap);
+  // --- Battalion pills ---
+  const battSection = document.createElement("div");
+  battSection.className = "setup-section";
 
-  ["BC1","BC2"].forEach(b => {
-    const btn = document.createElement("button");
-    btn.className = "pill";
-    btn.textContent = b;
-    btn.onclick = () => {
-      appState.battalion = b;
-      refresh();
-    };
-    battWrap.appendChild(btn);
-  });
+  const battLabel = document.createElement("div");
+  battLabel.className = "setup-section-label";
+  battLabel.textContent = "Battalion";
+  battSection.appendChild(battLabel);
 
-  // Units
-  const unitWrap = document.createElement("div");
-  unitWrap.className = "card";
-  unitWrap.innerHTML = `<h3>Units Responding</h3>`;
-  container.appendChild(unitWrap);
+  const battRow = document.createElement("div");
+  battRow.className = "pill-row";
 
-  ALL_UNITS.forEach(u => {
-    const btn = document.createElement("button");
-    btn.className = "pill";
-    btn.textContent = u;
-    btn.onclick = () => toggleUnit(u);
-    unitWrap.appendChild(btn);
-  });
-
-  // Start Button
-  const startBtn = document.createElement("button");
-  startBtn.className = "primary start-btn";
-  startBtn.textContent = "Start Incident";
-  startBtn.onclick = () => onStartIncident();
-  container.appendChild(startBtn);
-
-  function toggleUnit(u){
-    const list = appState.unitsResponding;
-    if(list.includes(u)){
-      appState.unitsResponding = list.filter(x => x!==u);
-    } else {
-      appState.unitsResponding.push(u);
-    }
-    refresh();
-  }
-
-  function refresh(){
-    container.querySelectorAll(".pill").forEach(btn=>{
-      btn.classList.remove("selected");
-      if(btn.textContent===appState.callType) btn.classList.add("selected");
-      if(btn.textContent===appState.battalion) btn.classList.add("selected");
-      if(appState.unitsResponding.includes(btn.textContent)) btn.classList.add("selected");
+  (BATTALIONS || []).forEach((battId) => {
+    const isSelected = setup.battalion === battId;
+    const pill = createPill(battId, isSelected, () => {
+      setBattalion(battId);
     });
-  }
+    battRow.appendChild(pill);
+  });
 
-  refresh();
-  return container;
+  battSection.appendChild(battRow);
+  wrapper.appendChild(battSection);
+
+  // --- Call Type pills ---
+  const callSection = document.createElement("div");
+  callSection.className = "setup-section";
+
+  const callLabel = document.createElement("div");
+  callLabel.className = "setup-section-label";
+  callLabel.textContent = "Call Type";
+  callSection.appendChild(callLabel);
+
+  const callRow = document.createElement("div");
+  callRow.className = "pill-row";
+
+  (CALL_TYPES || []).forEach((type) => {
+    const isSelected = setup.callType === type;
+    const pill = createPill(type, isSelected, () => {
+      setCallType(type);
+    });
+    callRow.appendChild(pill);
+  });
+
+  callSection.appendChild(callRow);
+  wrapper.appendChild(callSection);
+
+  // --- Units (apparatus) grid ---
+  const unitSection = document.createElement("div");
+  unitSection.className = "setup-section";
+
+  const unitLabel = document.createElement("div");
+  unitLabel.className = "setup-section-label";
+  unitLabel.textContent = "Apparatus En Route";
+  unitSection.appendChild(unitLabel);
+
+  const unitGrid = document.createElement("div");
+  unitGrid.className = "unit-grid";
+
+  const activeUnits = setup.units || []; // expecting an array of selected unit IDs/labels
+
+  (UNITS || []).forEach((unitId) => {
+    const isSelected = activeUnits.includes(unitId);
+    const pill = createPill(unitId, isSelected, () => {
+      toggleUnit(unitId);
+    });
+    unitGrid.appendChild(pill);
+  });
+
+  unitSection.appendChild(unitGrid);
+  wrapper.appendChild(unitSection);
+
+  // --- Footer with Start Incident button ---
+  const footer = document.createElement("div");
+  footer.className = "setup-footer";
+
+  const canStart =
+    setup.battalion && setup.callType && (setup.units && setup.units.length > 0);
+
+  const startBtn = document.createElement("button");
+  startBtn.type = "button";
+  startBtn.className = "start-incident-btn";
+  startBtn.textContent = "Start Incident";
+  startBtn.disabled = !canStart;
+  startBtn.addEventListener("click", () => {
+    if (!canStart) return;
+    // move to Screen B (IRR / Ops) – name it whatever you’re using
+    goToScreen("ops"); // or "irr" or "screenB"
+  });
+
+  footer.appendChild(startBtn);
+  wrapper.appendChild(footer);
+
+  rootEl.appendChild(wrapper);
 }
