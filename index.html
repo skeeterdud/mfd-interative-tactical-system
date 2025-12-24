@@ -6,23 +6,25 @@
 
   <title>MFD Interactive Tactical System</title>
 
-  <!-- Theme -->
   <meta name="theme-color" content="#0b1a3a" />
 
-  <!-- Styles -->
+  <!-- Main stylesheet -->
   <link rel="stylesheet" href="styles/style.css" />
 </head>
 
 <body>
 
-  <!-- Main App Root -->
+  <!-- Root mount point -->
   <div id="app"></div>
 
-  <!-- App Scripts (order matters) -->
-  <script src="scripts/state.js"></script>
-  <script src="scripts/components.js"></script>
-  <script src="scripts/canvas.js"></script>
-  <script src="scripts/app.js"></script>
+  <!-- Load the app as an ES module -->
+  <script type="module">
+    import { initApp } from "./scripts/app.js";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      initApp("app");
+    });
+  </script>
 
 </body>
 </html>
