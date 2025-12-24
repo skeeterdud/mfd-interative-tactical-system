@@ -94,7 +94,7 @@ function renderIncidentScreen(state) {
   const { incident } = state;
   const { callType, battalion, selectedUnitIds } = incident;
 
-  const callTypes = ["Fire", "Accident", "Large Scale Event"];
+  const callTypes = ["Fire", "Accident", "Large Scale Event (EMS, RTF)"];
 
   const canGoNext =
     callType &&
@@ -133,11 +133,23 @@ function renderIncidentScreen(state) {
 
         <section class="card">
           <h2 class="card-title">Battalion</h2>
-          <select id="battalionSelect" class="field-select">
-            <option value="">Select battalion…</option>
-            <option value="BC1" ${battalion === "BC1" ? "selected" : ""}>BC1</option>
-            <option value="BC2" ${battalion === "BC2" ? "selected" : ""}>BC2</option>
-          </select>
+          <div class="calltype-row">
+            ${["BC1", "BC2"]
+              .map(
+                (b) => `
+              <label class="pill-option">
+                <input 
+                  type="radio" 
+                  name="battalion" 
+                  value="${b}"
+                  ${battalion === b ? "checked" : ""} 
+                />
+                <span>${b}</span>
+              </label>
+            `
+              )
+              .join("")}
+          </div>
           <p class="helper-text">
             This battalion will carry forward into the IRR and Tactical views.
           </p>
@@ -184,8 +196,6 @@ function renderIncidentScreen(state) {
 }
 
 function attachIncidentHandlers(state) {
-  const { incident } = state;
-
   // Call type radios
   document.querySelectorAll('input[name="callType"]').forEach((input) => {
     input.addEventListener("change", () => {
@@ -193,13 +203,12 @@ function attachIncidentHandlers(state) {
     });
   });
 
-  // Battalion select
-  const battSel = document.getElementById("battalionSelect");
-  if (battSel) {
-    battSel.addEventListener("change", () => {
-      setIncidentField("battalion", battSel.value);
+  // Battalion radios
+  document.querySelectorAll('input[name="battalion"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      setIncidentField("battalion", input.value);
     });
-  }
+  });
 
   // Unit checkboxes
   document.querySelectorAll(".unit-checkbox").forEach((cb) => {
@@ -213,13 +222,12 @@ function attachIncidentHandlers(state) {
   const nextBtn = document.getElementById("toIrrBtn");
   if (nextBtn) {
     nextBtn.addEventListener("click", () => {
-      // Move to IRR screen
       setScreen("irr");
     });
   }
 }
 
-// --- SCREEN B: IRR (placeholder for now) -----------------------------------
+// --- SCREEN B: IRR ---------------------------------------------------------
 
 function renderIrrScreen(state) {
   const { incident } = state;
@@ -250,10 +258,6 @@ function renderIrrScreen(state) {
             }
           </li>
         </ul>
-        <p class="helper-text">
-          Next step: we’ll embed your existing Size-Up Builder logic here and connect
-          it to the shared state.
-        </p>
       </section>
 
       <footer class="screen-footer">
@@ -284,7 +288,7 @@ function attachIrrHandlers() {
   }
 }
 
-// --- SCREEN C: TACTICAL VIEW (placeholder for now) -------------------------
+// --- SCREEN C: TACTICAL VIEW ----------------------------------------------
 
 function renderTacticalScreen(state) {
   const { tactical, incident } = state;
@@ -343,9 +347,6 @@ function renderTacticalScreen(state) {
             </div>
           </div>
         </div>
-        <p class="helper-text">
-          Next step: hook this to the canvas.js with drag / assign / benchmark features.
-        </p>
       </section>
 
       <footer class="screen-footer">
@@ -371,7 +372,6 @@ function attachTacticalHandlers() {
   const newIncidentBtn = document.getElementById("backToIncidentFromTacBtn");
   if (newIncidentBtn) {
     newIncidentBtn.addEventListener("click", () => {
-      // For now just go back; later we can call resetState()
       setScreen("incident");
     });
   }
@@ -386,14 +386,5 @@ function attachScreenHandlers(state) {
     attachIrrHandlers(state);
   } else if (state.screen === "tactical") {
     attachTacticalHandlers(state);
-  }
-}
-
-function renderApp() {
-  const root = document.getElementById("app");
-  if (appState.screen === "setup") {
-    renderSetupScreen(root);
-  } else if (appState.screen === "ops") {
-    renderOpsScreen(root);
   }
 }
