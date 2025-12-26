@@ -318,24 +318,50 @@ function renderIrrScreen(state) {
             </div>
           </div>
 
-          <div class="field-group">
-            <label class="field-label">Building Height</label>
-            <div class="pill-row">
-              ${["1", "2", "3", "4", "5"]
-                .map(
-                  (h) => `
-                <button
-                  class="choice irr-height-btn ${isSelected("height", h) ? "selected" : ""}"
-                  data-field="height"
-                  data-value="${h}"
-                >
-                  ${h} story
-                </button>
-              `
-                )
-                .join("")}
-            </div>
-          </div>
+         <div class="field-group">
+  <label class="field-label">Location</label>
+  <div class="pill-row">
+    ${[
+      { value: "Alpha",     label: "Alpha" },
+      { value: "Bravo",     label: "Bravo" },
+      { value: "Charlie",   label: "Charlie" },
+      { value: "Delta",     label: "Delta" },
+      { value: "1st Floor", label: "1st Floor" },
+      { value: "2nd Floor", label: "2nd Floor" },
+      { value: "3rd Floor", label: "3rd Floor" },
+      { value: "4th Floor", label: "4th Floor" },
+      { value: "other",     label: "Other" },
+    ]
+      .map(
+        (loc) => `
+      <button
+        class="choice irr-iaploc-btn ${
+          isSelected("iapLocation", loc.value) ? "selected" : ""
+        }"
+        data-field="iapLocation"
+        data-value="${loc.value}"
+      >
+        ${loc.label}
+      </button>
+    `
+      )
+      .join("")}
+  </div>
+
+  ${
+    irr.iapLocation === "other"
+      ? `
+    <input
+      type="text"
+      class="field-input"
+      id="irrIapLocationOther"
+      placeholder="e.g., interior stairwell, basement, roof division…"
+      value="${irr.iapLocationOther || ""}"
+    />
+  `
+      : ""
+  }
+</div>
 
           <div class="field-group">
             <label class="field-label">Occupancy Type</label>
@@ -632,13 +658,19 @@ function attachIrrHandlers() {
     });
   }
 
+  const iapLocOtherInput = document.getElementById("irrIapLocationOther");
+  if (iapLocOtherInput) {
+    iapLocOtherInput.addEventListener("input", () => {
+      setIrrField("iapLocationOther", iapLocOtherInput.value);
+  });
+}
+
   const cmdInput = document.getElementById("irrCommandText");
   if (cmdInput) {
     cmdInput.addEventListener("input", () => {
       setIrrField("commandText", cmdInput.value);
     });
   }
-}
 
 // Helper: build the IRR text using current state
 function buildIrrText(state) {
