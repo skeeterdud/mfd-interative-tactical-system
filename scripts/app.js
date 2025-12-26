@@ -714,7 +714,12 @@ function buildIrrText(state) {
 
   const tasks = irr.iapTasks || [];
   const objectives = irr.iapObjectives || [];
-  const iapLoc = irr.iapLocation ? irr.iapLocation.toLowerCase() : "";
+  let iapLocPhrase = "";
+  if (irr.iapLocation === "other") {
+    iapLocPhrase = (irr.iapLocationOther || "").trim();
+  } else {
+    iapLocPhrase = mapIapLocation(irr.iapLocation);
+}
 
   const taskPhrase = tasks.length ? tasks.join(", ") : "";
   const objPhrase = objectives.length ? objectives.join(", ") : "";
@@ -733,10 +738,10 @@ function buildIrrText(state) {
     `${probPhrase ? " on the " + probPhrase : ""}.`;
 
   const line2 =
-    `${unitLabel ? unitLabel + " " : ""}` +
-    `${taskPhrase ? "will be " + taskPhrase : "will be operating"}` +
-    `${iapLoc ? " on the " + iapLoc + " side" : ""}` +
-    `${objPhrase ? " for " + objPhrase : ""}.`;
+  `${irrUnitLabel ? irrUnitLabel + " " : ""}` +
+  `${taskPhrase ? "will be " + taskPhrase : "will be operating"}` +
+  `${iapLocPhrase ? " on the " + iapLocPhrase : ""}` +
+  `${objPhrase ? " for " + objPhrase : ""}.`;
 
   const line3 =
     `We will be in the ${strategyLower} strategy` +
