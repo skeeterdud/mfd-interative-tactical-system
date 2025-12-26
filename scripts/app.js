@@ -868,16 +868,18 @@ function buildIrrText(state) {
 
 function normalizeCommandName(raw, unitLabel) {
   let s = (raw || "").trim();
+
+  // If they leave it blank, default to "Trk 1 is now Command"
   if (!s && unitLabel) {
-    // If they didn’t type anything, give a reasonable default
     return `${unitLabel} is now Command`;
   }
   if (!s) return "";
 
-  // Avoid double "Command"
+  // If they already typed "Command" at the end, don't add it again
   if (/command\.?$/i.test(s)) {
     return s.replace(/\.*$/, "");
   }
+
   return `${s} Command`;
 }
 
