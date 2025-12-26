@@ -885,14 +885,17 @@ function mapIapLocation(loc) {
   if (!loc) return "";
   const lower = String(loc).toLowerCase();
 
+  // Sides get "side"
   if (["alpha", "bravo", "charlie", "delta"].includes(lower)) {
-    return `${lower} side`;      // => "on the alpha side"
+    return `${lower} side`;
   }
 
+  // Floors stay as-is
   if (lower.includes("floor")) {
-    return lower;                // => "on the 2nd floor"
+    return lower; // "1st floor", "2nd floor"
   }
 
+  // Fallback: just return the text
   return lower;
 }
 
