@@ -221,3 +221,71 @@ input[type="text"]{
   cursor: not-allowed;
   box-shadow: none;
 }
+/* IRR layout */
+.irr-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .irr-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.irr-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field-group {
+  margin-bottom: 10px;
+}
+
+.field-label {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: rgba(15, 23, 42, 0.8);
+}
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pill-btn {
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  background: #ffffff;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pill-btn-selected {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.field-input {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.output-box {
+  white-space: pre-wrap;
+  font-size: 15px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e5edff;
+  border-radius: 10px;
+  padding: 10px;
+}
