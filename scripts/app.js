@@ -233,22 +233,20 @@ function attachIncidentHandlers(state) {
 
 // --- SCREEN B: IRR (Initial Radio Report) ----------------------------------
 
+// --- SCREEN B: IRR (Initial Radio Report) ----------------------------------
+
 function renderIrrScreen(state) {
   const { incident, irr } = state;
   const { callType, battalion, selectedUnitIds } = incident;
 
-  // Only units selected on Screen A can be chosen as the IRR unit
   const respondingUnits = selectedUnitIds
     .map((id) => ALL_UNITS.find((u) => u.id === id))
     .filter(Boolean);
 
-  // Simple helper to show selected pills
   const isSelected = (field, value) => irr[field] === value;
-
   const isInArray = (field, value) =>
     Array.isArray(irr[field]) && irr[field].includes(value);
 
-  // Generated size-up preview text
   const sizeupText = buildIrrText(state);
 
   return `
@@ -284,7 +282,7 @@ function renderIrrScreen(state) {
                   .map(
                     (u) => `
             <button
-              class="pill-btn irr-unit-btn ${irr.irrUnitId === u.id ? "pill-btn-selected" : ""}"
+              class="choice irr-unit-btn ${irr.irrUnitId === u.id ? "selected" : ""}"
               data-unit-id="${u.id}"
             >
               ${u.label}
@@ -308,7 +306,7 @@ function renderIrrScreen(state) {
                 .map(
                   (size) => `
                 <button
-                  class="pill-btn irr-size-btn ${isSelected("buildingSize", size) ? "pill-btn-selected" : ""}"
+                  class="choice irr-size-btn ${isSelected("buildingSize", size) ? "selected" : ""}"
                   data-field="buildingSize"
                   data-value="${size}"
                 >
@@ -327,7 +325,7 @@ function renderIrrScreen(state) {
                 .map(
                   (h) => `
                 <button
-                  class="pill-btn irr-height-btn ${isSelected("height", h) ? "pill-btn-selected" : ""}"
+                  class="choice irr-height-btn ${isSelected("height", h) ? "selected" : ""}"
                   data-field="height"
                   data-value="${h}"
                 >
@@ -352,7 +350,9 @@ function renderIrrScreen(state) {
                 .map(
                   (o) => `
                 <button
-                  class="pill-btn irr-occ-btn ${isSelected("occupancy", o.value) ? "pill-btn-selected" : ""}"
+                  class="choice irr-occ-btn ${
+                    isSelected("occupancy", o.value) ? "selected" : ""
+                  }"
                   data-field="occupancy"
                   data-value="${o.value}"
                 >
@@ -395,7 +395,7 @@ function renderIrrScreen(state) {
                 .map(
                   (c) => `
                 <button
-                  class="pill-btn irr-cond-btn ${isSelected("conditions", c.value) ? "pill-btn-selected" : ""}"
+                  class="choice irr-cond-btn ${isSelected("conditions", c.value) ? "selected" : ""}"
                   data-field="conditions"
                   data-value="${c.value}"
                 >
@@ -414,8 +414,8 @@ function renderIrrScreen(state) {
                 .map(
                   (side) => `
                 <button
-                  class="pill-btn irr-side-btn ${
-                    isInArray("problemSides", side) ? "pill-btn-selected" : ""
+                  class="choice irr-side-btn ${
+                    isInArray("problemSides", side) ? "selected" : ""
                   }"
                   data-field="problemSides"
                   data-value="${side}"
@@ -443,7 +443,7 @@ function renderIrrScreen(state) {
 
       <section class="card irr-grid">
         <div class="irr-col">
-          <h2 class="card-title">Initial Action Plan (Task / Location / Objective)</h2>
+          <h2 class="card-title">Initial Action Plan</h2>
 
           <div class="field-group">
             <label class="field-label">Tasks</label>
@@ -459,8 +459,8 @@ function renderIrrScreen(state) {
                 .map(
                   (task) => `
                 <button
-                  class="pill-btn irr-task-btn ${
-                    isInArray("iapTasks", task) ? "pill-btn-selected" : ""
+                  class="choice irr-task-btn ${
+                    isInArray("iapTasks", task) ? "selected" : ""
                   }"
                   data-field="iapTasks"
                   data-value="${task}"
@@ -480,8 +480,8 @@ function renderIrrScreen(state) {
                 .map(
                   (side) => `
                 <button
-                  class="pill-btn irr-iaploc-btn ${
-                    isSelected("iapLocation", side) ? "pill-btn-selected" : ""
+                  class="choice irr-iaploc-btn ${
+                    isSelected("iapLocation", side) ? "selected" : ""
                   }"
                   data-field="iapLocation"
                   data-value="${side}"
@@ -501,8 +501,8 @@ function renderIrrScreen(state) {
                 .map(
                   (obj) => `
                 <button
-                  class="pill-btn irr-obj-btn ${
-                    isInArray("iapObjectives", obj) ? "pill-btn-selected" : ""
+                  class="choice irr-obj-btn ${
+                    isInArray("iapObjectives", obj) ? "selected" : ""
                   }"
                   data-field="iapObjectives"
                   data-value="${obj}"
@@ -526,8 +526,8 @@ function renderIrrScreen(state) {
                 .map(
                   (s) => `
                 <button
-                  class="pill-btn irr-strat-btn ${
-                    irr.strategy === s ? "pill-btn-selected" : ""
+                  class="choice irr-strat-btn ${
+                    irr.strategy === s ? "selected" : ""
                   }"
                   data-field="strategy"
                   data-value="${s}"
@@ -558,7 +558,7 @@ function renderIrrScreen(state) {
         <p class="helper-text">
           This is the radio-ready paragraph you can read or copy.
         </p>
-        <pre class="output-box" id="irrOutputBox">${sizeupText}</pre>
+        <pre class="output" id="irrOutputBox">${sizeupText}</pre>
       </section>
 
       <footer class="screen-footer">
