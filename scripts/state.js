@@ -1,7 +1,7 @@
 // state.js
 // Central app state + helpers
 
-// --- Unit Definitions (same list you gave me) ---
+// --- Unit Definitions ---
 export const UNIT_TYPES = {
   TRUCK: "truck",
   ENGINE: "engine",
@@ -17,39 +17,6 @@ const UNITS = [
   "Med 1","Med 2","Med 3","Med 5","Med 6",
   "Med 7","Med 9","Med 10","Med 11"
 ];
-
-const appState = {
-  screen: "setup",
-  setup: {
-    battalion: null,
-    callType: null,
-    units: []
-  },
-  // ...other stuff for later screens
-};
-
-function setBattalion(id) {
-  appState.setup.battalion = id;
-  renderApp();
-}
-
-function setCallType(type) {
-  appState.setup.callType = type;
-  renderApp();
-}
-
-function toggleUnit(unitId) {
-  const list = appState.setup.units;
-  const idx = list.indexOf(unitId);
-  if (idx === -1) list.push(unitId);
-  else list.splice(idx, 1);
-  renderApp();
-}
-
-function goToScreen(screen) {
-  appState.screen = screen;
-  renderApp();
-}
 
 export const ALL_UNITS = [
   { id: "TRK1", label: "Trk 1", type: UNIT_TYPES.TRUCK },
@@ -89,20 +56,21 @@ const defaultState = {
 
   // Screen B – IRR inputs + generated text
   irr: {
-    irrUnitId: "",          // which unit is giving the IRR (id from ALL_UNITS)
-    buildingSize: "",       // "Small" | "Medium" | "Large" | "Mega"
-    buildingHeight: "",     // "1 story" etc.
-    occupancy: "",          // "house" / "apartment" / "strip center" / custom
-    occupancyOther: "",     // free text if "other"
-    conditions: "",         // "nothing showing" etc.
-    problemSides: [],       // ["Alpha","Bravo"]
-    problemLocationText: "",// free text
-    iapTasks: [],           // ["investigating","attack line",...]
-    iapLocation: "",        // "alpha" etc.
-    iapObjectives: [],      // ["fire attack","primary search"]
-    strategy: "Offensive",  // "Offensive" | "Defensive"
-    commandText: "",        // "Trk 1 is now Main Street Command"
-    generatedText: "",      // full generated size-up paragraph
+    irrUnitId: "",            // which unit is giving the IRR (id from ALL_UNITS)
+    buildingSize: "",         // "Small" | "Medium" | "Large" | "Mega"
+    height: "",               // "1" | "2" | "3" | ... (app uses "${height} story")
+    occupancy: "",            // "house" / "apartment" / "strip" / "commercial" / "other"
+    occupancyOther: "",       // free text if "other"
+    conditions: "",           // "nothing" | "light" | "heavy" | "working" | "defensive"
+    problemSides: [],         // ["Alpha","Bravo"]
+    problemLocationText: "",  // free text
+    iapTasks: [],             // ["Investigate","Attack Line",...]
+    iapLocations: [],         // multi-select locations (e.g., ["Alpha","1st Floor","other"])
+    iapLocationOther: "",     // free text when 'other' is chosen in iapLocations
+    iapObjectives: [],        // ["Fire Attack","Primary Search"]
+    strategy: "Offensive",    // "Offensive" | "Defensive"
+    commandText: "",          // free text for command name
+    generatedText: "",        // full generated size-up paragraph
   },
 
   // Screen C – units and tactical view
@@ -113,7 +81,7 @@ const defaultState = {
       // "available","enroute","level1","onscene"
       status: "available",
       // assignment object or null
-      assignment: null, 
+      assignment: null,
       // timestamps
       timestamps: {
         enroute: null,
