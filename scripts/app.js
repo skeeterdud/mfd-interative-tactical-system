@@ -296,7 +296,7 @@ function renderIrrScreen(state) {
       </section>
 
       <section class="card irr-grid">
-        <div class="irr-col">
+               <div class="irr-col">
           <h2 class="card-title">Building Description</h2>
 
           <div class="field-group">
@@ -317,6 +317,67 @@ function renderIrrScreen(state) {
                 .join("")}
             </div>
           </div>
+
+          <div class="field-group">
+            <label class="field-label">Building Height</label>
+            <div class="pill-row">
+              ${["1", "2", "3", "4", "5"]
+                .map(
+                  (h) => `
+                <button
+                  class="choice irr-height-btn ${isSelected("height", h) ? "selected" : ""}"
+                  data-field="height"
+                  data-value="${h}"
+                >
+                  ${h} story
+                </button>
+              `
+                )
+                .join("")}
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Occupancy Type</label>
+            <div class="pill-row">
+              ${[
+                { value: "house", label: "House" },
+                { value: "apartment", label: "Apartment" },
+                { value: "strip", label: "Strip Center" },
+                { value: "commercial", label: "Commercial" },
+                { value: "other", label: "Other" },
+              ]
+                .map(
+                  (o) => `
+                <button
+                  class="choice irr-occ-btn ${
+                    isSelected("occupancy", o.value) ? "selected" : ""
+                  }"
+                  data-field="occupancy"
+                  data-value="${o.value}"
+                >
+                  ${o.label}
+                </button>
+              `
+                )
+                .join("")}
+            </div>
+
+            ${
+              irr.occupancy === "other"
+                ? `
+              <input
+                type="text"
+                class="field-input"
+                id="irrOccupancyOther"
+                placeholder="e.g., school, church, warehouse…"
+                value="${irr.occupancyOther || ""}"
+              />
+            `
+                : ""
+            }
+          </div>
+        </div>
 
          <div class="field-group">
   <label class="field-label">Location</label>
@@ -433,26 +494,51 @@ function renderIrrScreen(state) {
             </div>
           </div>
 
-          <div class="field-group">
-            <label class="field-label">Location of the Problem (sides)</label>
+                    <div class="field-group">
+            <label class="field-label">Location</label>
             <div class="pill-row">
-              ${["Alpha", "Bravo", "Charlie", "Delta"]
+              ${[
+                { value: "Alpha",     label: "Alpha" },
+                { value: "Bravo",     label: "Bravo" },
+                { value: "Charlie",   label: "Charlie" },
+                { value: "Delta",     label: "Delta" },
+                { value: "1st Floor", label: "1st Floor" },
+                { value: "2nd Floor", label: "2nd Floor" },
+                { value: "3rd Floor", label: "3rd Floor" },
+                { value: "4th Floor", label: "4th Floor" },
+                { value: "other",     label: "Other" },
+              ]
                 .map(
-                  (side) => `
+                  (loc) => `
                 <button
-                  class="choice irr-side-btn ${
-                    isInArray("problemSides", side) ? "selected" : ""
+                  class="choice irr-iaploc-btn ${
+                    isSelected("iapLocation", loc.value) ? "selected" : ""
                   }"
-                  data-field="problemSides"
-                  data-value="${side}"
+                  data-field="iapLocation"
+                  data-value="${loc.value}"
                 >
-                  ${side}
+                  ${loc.label}
                 </button>
               `
                 )
                 .join("")}
             </div>
+
+            ${
+              irr.iapLocation === "other"
+                ? `
+              <input
+                type="text"
+                class="field-input"
+                id="irrIapLocationOther"
+                placeholder="e.g., interior stairwell, basement, roof division…"
+                value="${irr.iapLocationOther || ""}"
+              />
+            `
+                : ""
+            }
           </div>
+
 
           <div class="field-group">
             <label class="field-label">Problem Location (free text)</label>
@@ -643,7 +729,7 @@ function attachIrrHandlers() {
       });
     });
 
-  // Inputs: occupancyOther, problemLocationText, commandText
+  // Inputs: occupancyOther, problemLocationText, iapLocationOther, commandText
   const occOther = document.getElementById("irrOccupancyOther");
   if (occOther) {
     occOther.addEventListener("input", () => {
@@ -662,8 +748,8 @@ function attachIrrHandlers() {
   if (iapLocOtherInput) {
     iapLocOtherInput.addEventListener("input", () => {
       setIrrField("iapLocationOther", iapLocOtherInput.value);
-  });
-}
+    });
+  }
 
   const cmdInput = document.getElementById("irrCommandText");
   if (cmdInput) {
@@ -671,6 +757,114 @@ function attachIrrHandlers() {
       setIrrField("commandText", cmdInput.value);
     });
   }
+}
+// Helper: build the IRR text using current state
+function buildIrrText(state) {
+  const { incident, irr } = state;
+  const { battalion } = incident;
+
+  const irrUnit = ALL_UNITS.find((u) => u.id === irr.irrUnitId);
+  const unitLabel = irrUnit ? irrUnit.label : "";
+
+  const size = irr.buildingSize ? irr.buildingSize.toLowerCase() : "";
+  const height = irr.height ? `${irr.height} story` : "";
+
+  let occ = "";
+  if (irr.occupancy === "other" && irr.occupancyOther) {
+    occ = irr.occupancyOther;
+  } else if (irr.occupancy === "house") {
+    occ = "house";
+  } else if (irr.occupancy === "apartment") {
+    occ = "apartment";
+  } else if (irr.occupancy === "strip") {
+    occ = "strip center";
+  } else if (irr.occupancy === "commercial") {
+    occ = "commercial building";
+  }
+
+  const condMap = {
+    nothing: "nothing showing",
+    light: "light smoke",
+    heavy: "heavy smoke",
+    working: "working fire",
+    defensive: "defensive conditions",
+  };
+  const cond = irr.conditions ? condMap[irr.conditions] || "" : "";
+
+  const sidesText = (irr.problemSides || [])
+    .map((s) => s.toLowerCase())
+    .join(" ");
+
+  const locFree = (irr.problemLocationText || "").trim();
+  const probPhrase = [sidesText, locFree].filter(Boolean).join(" ");
+
+  const tasks = irr.iapTasks || [];
+  const objectives = irr.iapObjectives || [];
+
+  let iapLocPhrase = "";
+  if (irr.iapLocation === "other") {
+    iapLocPhrase = (irr.iapLocationOther || "").trim();
+  } else {
+    iapLocPhrase = mapIapLocation(irr.iapLocation);
+  }
+
+  const taskPhrase = tasks.length ? tasks.join(", ") : "";
+  const objPhrase = objectives.length ? objectives.join(", ") : "";
+
+  const strategyLower = (irr.strategy || "Offensive").toLowerCase();
+  const cmdText = normalizeCommandName(irr.commandText || "", unitLabel);
+
+  const partsBuilding = [size, height, occ].filter(Boolean).join(" ");
+
+  const line1 =
+    `${battalion ? battalion + " " : ""}` +
+    `${unitLabel ? "From " + unitLabel + ", " : ""}` +
+    `we are on scene with a ${partsBuilding || "structure"}` +
+    `${cond ? ", with " + cond : ""}` +
+    `${probPhrase ? " on the " + probPhrase : ""}.`;
+
+  const line2 =
+    `${unitLabel ? unitLabel + " " : ""}` +
+    `${taskPhrase ? "will be " + taskPhrase : "will be operating"}` +
+    `${iapLocPhrase ? " on the " + iapLocPhrase : ""}` +
+    `${objPhrase ? " for " + objPhrase : ""}.`;
+
+  const line3 =
+    `We will be in the ${strategyLower} strategy` +
+    `${cmdText ? ", " + cmdText : ""}.`;
+
+  return [line1, "", line2, "", line3].join("\n");
+}
+
+function normalizeCommandName(raw, unitLabel) {
+  let s = (raw || "").trim();
+  if (!s && unitLabel) {
+    // If they didn’t type anything, give a reasonable default
+    return `${unitLabel} is now Command`;
+  }
+  if (!s) return "";
+
+  // Avoid double "Command"
+  if (/command\.?$/i.test(s)) {
+    return s.replace(/\.*$/, "");
+  }
+  return `${s} Command`;
+}
+
+function mapIapLocation(loc) {
+  if (!loc) return "";
+  const lower = String(loc).toLowerCase();
+
+  if (["alpha", "bravo", "charlie", "delta"].includes(lower)) {
+    return `${lower} side`;      // => "on the alpha side"
+  }
+
+  if (lower.includes("floor")) {
+    return lower;                // => "on the 2nd floor"
+  }
+
+  return lower;
+}
 
 // Helper: build the IRR text using current state
 function buildIrrText(state) {
