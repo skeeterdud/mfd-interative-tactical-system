@@ -773,6 +773,7 @@ function buildIrrText(state) {
   const size = irr.buildingSize ? irr.buildingSize.toLowerCase() : "";
   const height = irr.height ? `${irr.height} story` : "";
 
+  // Occupancy
   let occ = "";
   if (irr.occupancy === "other" && irr.occupancyOther) {
     occ = irr.occupancyOther;
@@ -786,6 +787,7 @@ function buildIrrText(state) {
     occ = "commercial building";
   }
 
+  // Conditions
   const condMap = {
     nothing: "nothing showing",
     light: "light smoke",
@@ -795,23 +797,44 @@ function buildIrrText(state) {
   };
   const cond = irr.conditions ? condMap[irr.conditions] || "" : "";
 
-  const sidesText = (irr.problemSides || [])
-    .map((s) => s.toLowerCase())
-    .join(" ");
-
+  // Problem location (sides + free text)
+  const sides = Array.isArray(irr.problemSides) ? irr.problemSides : [];
+  const sidesText = sides.map((s) => s.toLowerCase()).join(" / ");
   const locFree = (irr.problemLocationText || "").trim();
-  const probPhrase = [sidesText, locFree].filter(Boolean).join(" ");
 
-  const tasks = irr.iapTasks || [];
-  const objectives = irr.iapObjectives || [];
-
-  let iapLocPhrase = "";
-  if (irr.iapLocation === "other") {
-    iapLocPhrase = (irr.iapLocationOther || "").trim();
-  } else {
-    iapLocPhrase = mapIapLocation(irr.iapLocation);
+  let probPhrase = "";
+  if (locFree && sides.length) {
+    // e.g., "alpha / bravo 2nd floor rear"
+    probPhrase = `${sidesText} ${locFree}`;
+  } else if (locFree && !sides.length) {
+    // e.g., "2nd floor rear storage"
+    probPhrase = locFree;
+  } else if (!locFree && sides.length === 1) {
+    // "alpha side"
+    probPhrase = `${sidesText} side`;
+  } else if (!locFree && sides.length > 1) {
+    // "alpha / bravo sides"
+    probPhrase = `${sidesText} sides`;
   }
 
+  // IAP tasks / objectives / locations (multi)
+  const tasks = Array.isArray(irr.iapTasks) ? irr.iapTasks : [];
+  const objectives = Array.isArray(irr.iapObjectives) ? irr.iapObjectives : [];
+  const iapLocations = Array.isArray(irr.iapLocations) ? irr.iapLocations : [];
+
+  const locPhrases = [];
+  iapLocations.forEach((loc) => {
+    if (loc === "other") {
+      if (irr.iapLocationOther && irr.iapLocationOther.trim()) {
+        locPhrases.push(irr.iapLocationOther.trim());
+      }
+    } else {
+      const mapped = mapIapLocation(loc);
+      if (mapped) locPhrases.push(mapped);
+    }
+  });
+
+  const iapLocPhrase = locPhrases.length ? locPhrases.join(", ") : "";
   const taskPhrase = tasks.length ? tasks.join(", ") : "";
   const objPhrase = objectives.length ? objectives.join(", ") : "";
 
@@ -819,6 +842,8 @@ function buildIrrText(state) {
   const cmdText = normalizeCommandName(irr.commandText || "", unitLabel);
 
   const partsBuilding = [size, height, occ].filter(Boolean).join(" ");
+
+  // ---- Final lines --------------------------------------------------------
 
   const line1 =
     `${battalion ? battalion + " " : ""}` +
@@ -839,6 +864,7 @@ function buildIrrText(state) {
 
   return [line1, "", line2, "", line3].join("\n");
 }
+
 
 function normalizeCommandName(raw, unitLabel) {
   let s = (raw || "").trim();
