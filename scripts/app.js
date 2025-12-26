@@ -229,35 +229,334 @@ function attachIncidentHandlers(state) {
 
 // --- SCREEN B: IRR ---------------------------------------------------------
 
+// --- SCREEN B: IRR (Initial Radio Report) ----------------------------------
+
 function renderIrrScreen(state) {
-  const { incident } = state;
+  const { incident, irr } = state;
+  const { callType, battalion, selectedUnitIds } = incident;
+
+  // Only units selected on Screen A can be chosen as the IRR unit
+  const respondingUnits = selectedUnitIds
+    .map((id) => ALL_UNITS.find((u) => u.id === id))
+    .filter(Boolean);
+
+  // Simple helper to show selected pills
+  const isSelected = (field, value) => irr[field] === value;
+
+  const isInArray = (field, value) =>
+    Array.isArray(irr[field]) && irr[field].includes(value);
+
+  // Generated size-up preview text
+  const sizeupText = buildIrrText(state);
 
   return `
     <section class="screen screen-irr">
       <h1 class="screen-title">Initial Radio Report (IRR)</h1>
       <p class="screen-desc">
-        This screen will hold the IRR builder (like the size-up app), tied to the 
-        battalion and units you selected on the Incident Setup screen.
+        Use this screen to build the IRR. Battalion and units are carried over
+        from the Incident Setup screen.
       </p>
 
       <section class="card">
         <h2 class="card-title">Incident Context</h2>
         <ul class="summary-list">
-          <li><strong>Call Type:</strong> ${incident.callType || "Not set"}</li>
-          <li><strong>Battalion:</strong> ${incident.battalion || "Not set"}</li>
-          <li><strong>Units Responding:</strong> 
-            ${
-              incident.selectedUnitIds.length
-                ? incident.selectedUnitIds
-                    .map((id) => {
-                      const unit = ALL_UNITS.find((u) => u.id === id);
-                      return unit ? unit.label : id;
-                    })
-                    .join(", ")
-                : "None selected"
-            }
-          </li>
+          <li><strong>Call Type:</strong> ${callType || "Not set"}</li>
+          <li><strong>Battalion:</strong> ${battalion || "Not set"}</li>
+          <li><strong>Units Responding:</strong> ${
+            respondingUnits.length
+              ? respondingUnits.map((u) => u.label).join(", ")
+              : "None selected"
+          }</li>
         </ul>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">Unit Giving IRR</h2>
+        <p class="helper-text">
+          Choose which arriving company officer is giving the IRR.
+        </p>
+        <div class="pill-row">
+          ${
+            respondingUnits.length
+              ? respondingUnits
+                  .map(
+                    (u) => `
+            <button
+              class="pill-btn irr-unit-btn ${irr.irrUnitId === u.id ? "pill-btn-selected" : ""}"
+              data-unit-id="${u.id}"
+            >
+              ${u.label}
+            </button>
+          `
+                  )
+                  .join("")
+              : `<div class="helper-text">No units selected on the Incident screen.</div>`
+          }
+        </div>
+      </section>
+
+      <section class="card irr-grid">
+        <div class="irr-col">
+          <h2 class="card-title">Building Description</h2>
+
+          <div class="field-group">
+            <label class="field-label">Building Size</label>
+            <div class="pill-row">
+              ${["Small", "Medium", "Large", "Mega"]
+                .map(
+                  (size) => `
+                <button
+                  class="pill-btn irr-size-btn ${isSelected("buildingSize", size) ? "pill-btn-selected" : ""}"
+                  data-field="buildingSize"
+                  data-value="${size}"
+                >
+                  ${size}
+                </button>
+              `
+                )
+                .join("")}
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Building Height</label>
+            <div class="pill-row">
+              ${["1", "2", "3", "4", "5"]
+                .map(
+                  (h) => `
+                <button
+                  class="pill-btn irr-height-btn ${isSelected("height", h) ? "pill-btn-selected" : ""}"
+                  data-field="height"
+                  data-value="${h}"
+                >
+                  ${h} story
+                </button>
+              `
+                )
+                .join("")}
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Occupancy Type</label>
+            <div class="pill-row">
+              ${[
+                { value: "house", label: "House" },
+                { value: "apartment", label: "Apartment" },
+                { value: "strip", label: "Strip Center" },
+                { value: "commercial", label: "Commercial" },
+                { value: "other", label: "Other" },
+              ]
+                .map(
+                  (o) => `
+                <button
+                  class="pill-btn irr-occ-btn ${isSelected("occupancy", o.value) ? "pill-btn-selected" : ""}"
+                  data-field="occupancy"
+                  data-value="${o.value}"
+                >
+                  ${o.label}
+                </button>
+              `
+                )
+                .join("")}
+            </div>
+
+            ${
+              irr.occupancy === "other"
+                ? `
+              <input
+                type="text"
+                class="field-input"
+                id="irrOccupancyOther"
+                placeholder="e.g., school, church, warehouse…"
+                value="${irr.occupancyOther || ""}"
+              />
+            `
+                : ""
+            }
+          </div>
+        </div>
+
+        <div class="irr-col">
+          <h2 class="card-title">Problem / Conditions</h2>
+
+          <div class="field-group">
+            <label class="field-label">Conditions</label>
+            <div class="pill-row">
+              ${[
+                { value: "nothing", label: "Nothing Showing" },
+                { value: "light", label: "Light Smoke" },
+                { value: "heavy", label: "Heavy Smoke" },
+                { value: "working", label: "Working Fire" },
+                { value: "defensive", label: "Defensive Conditions" },
+              ]
+                .map(
+                  (c) => `
+                <button
+                  class="pill-btn irr-cond-btn ${isSelected("conditions", c.value) ? "pill-btn-selected" : ""}"
+                  data-field="conditions"
+                  data-value="${c.value}"
+                >
+                  ${c.label}
+                </button>
+              `
+                )
+                .join("")}
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Location of the Problem (sides)</label>
+            <div class="pill-row">
+              ${["Alpha", "Bravo", "Charlie", "Delta"]
+                .map(
+                  (side) => `
+                <button
+                  class="pill-btn irr-side-btn ${
+                    isInArray("problemSides", side) ? "pill-btn-selected" : ""
+                  }"
+                  data-field="problemSides"
+                  data-value="${side}"
+                >
+                  ${side}
+                </button>
+              `
+                )
+                .join("")}
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Problem Location (free text)</label>
+            <input
+              type="text"
+              class="field-input"
+              id="irrProblemLocation"
+              placeholder="e.g., 2nd floor / roof line / rear storage…"
+              value="${irr.problemLocationText || ""}"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section class="card irr-grid">
+        <div class="irr-col">
+          <h2 class="card-title">Initial Action Plan (Task / Location / Objective)</h2>
+
+          <div class="field-group">
+            <label class="field-label">Tasks</label>
+            <div class="pill-row">
+              ${[
+                "Investigate",
+                "Water Supply",
+                "Attack Line",
+                "Rescue",
+                "OEO",
+                "Defensive Op",
+              ]
+                .map(
+                  (task) => `
+                <button
+                  class="pill-btn irr-task-btn ${
+                    isInArray("iapTasks", task) ? "pill-btn-selected" : ""
+                  }"
+                  data-field="iapTasks"
+                  data-value="${task}"
+                >
+                  ${task}
+                </button>
+              `
+                )
+                .join("")}
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Location</label>
+            <div class="pill-row">
+              ${["Alpha", "Bravo", "Charlie", "Delta"]
+                .map(
+                  (side) => `
+                <button
+                  class="pill-btn irr-iaploc-btn ${
+                    isSelected("iapLocation", side) ? "pill-btn-selected" : ""
+                  }"
+                  data-field="iapLocation"
+                  data-value="${side}"
+                >
+                  ${side}
+                </button>
+              `
+                )
+                .join("")}
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Objectives</label>
+            <div class="pill-row">
+              ${["Fire Attack", "Primary Search"]
+                .map(
+                  (obj) => `
+                <button
+                  class="pill-btn irr-obj-btn ${
+                    isInArray("iapObjectives", obj) ? "pill-btn-selected" : ""
+                  }"
+                  data-field="iapObjectives"
+                  data-value="${obj}"
+                >
+                  ${obj}
+                </button>
+              `
+                )
+                .join("")}
+            </div>
+          </div>
+        </div>
+
+        <div class="irr-col">
+          <h2 class="card-title">Strategy / Command</h2>
+
+          <div class="field-group">
+            <label class="field-label">Strategy</label>
+            <div class="pill-row">
+              ${["Offensive", "Defensive"]
+                .map(
+                  (s) => `
+                <button
+                  class="pill-btn irr-strat-btn ${
+                    irr.strategy === s ? "pill-btn-selected" : ""
+                  }"
+                  data-field="strategy"
+                  data-value="${s}"
+                >
+                  ${s}
+                </button>
+              `
+                )
+                .join("")}
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Command Name</label>
+            <input
+              type="text"
+              class="field-input"
+              id="irrCommandText"
+              placeholder="e.g., Trk 1 is now Main Street Command"
+              value="${irr.commandText || ""}"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">Generated IRR</h2>
+        <p class="helper-text">
+          This is the radio-ready paragraph you can read or copy.
+        </p>
+        <pre class="output-box" id="irrOutputBox">${sizeupText}</pre>
       </section>
 
       <footer class="screen-footer">
@@ -273,109 +572,160 @@ function renderIrrScreen(state) {
 }
 
 function attachIrrHandlers() {
+  // Back / Next
   const backBtn = document.getElementById("backToIncidentBtn");
   if (backBtn) {
-    backBtn.addEventListener("click", () => {
-      setScreen("incident");
-    });
+    backBtn.addEventListener("click", () => setScreen("incident"));
   }
 
   const nextBtn = document.getElementById("toTacticalBtn");
   if (nextBtn) {
-    nextBtn.addEventListener("click", () => {
-      setScreen("tactical");
+    nextBtn.addEventListener("click", () => setScreen("tactical"));
+  }
+
+  // IRR unit selection
+  document.querySelectorAll(".irr-unit-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.unitId;
+      if (id) setIrrField("irrUnitId", id);
+    });
+  });
+
+  // Single-value pills (size, height, occupancy, conditions, location, strategy)
+  document
+    .querySelectorAll(
+      ".irr-size-btn, .irr-height-btn, .irr-occ-btn, .irr-cond-btn, .irr-iaploc-btn, .irr-strat-btn"
+    )
+    .forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const field = btn.dataset.field;
+        const value = btn.dataset.value;
+        if (field) setIrrField(field, value);
+      });
+    });
+
+  // Multi-value pills (problem sides, tasks, objectives)
+  document
+    .querySelectorAll(".irr-side-btn, .irr-task-btn, .irr-obj-btn")
+    .forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const field = btn.dataset.field;
+        const value = btn.dataset.value;
+        if (field && value) toggleIrrArrayField(field, value);
+      });
+    });
+
+  // Inputs: occupancyOther, problemLocationText, commandText
+  const occOther = document.getElementById("irrOccupancyOther");
+  if (occOther) {
+    occOther.addEventListener("input", () => {
+      setIrrField("occupancyOther", occOther.value);
+    });
+  }
+
+  const probLoc = document.getElementById("irrProblemLocation");
+  if (probLoc) {
+    probLoc.addEventListener("input", () => {
+      setIrrField("problemLocationText", probLoc.value);
+    });
+  }
+
+  const cmdInput = document.getElementById("irrCommandText");
+  if (cmdInput) {
+    cmdInput.addEventListener("input", () => {
+      setIrrField("commandText", cmdInput.value);
     });
   }
 }
 
-// --- SCREEN C: TACTICAL VIEW ----------------------------------------------
+// Helper: build the IRR text using current state
+function buildIrrText(state) {
+  const { incident, irr } = state;
+  const { battalion } = incident;
 
-function renderTacticalScreen(state) {
-  const { tactical, incident } = state;
+  const irrUnit = ALL_UNITS.find((u) => u.id === irr.irrUnitId);
+  const unitLabel = irrUnit ? irrUnit.label : "";
 
-  const enroute = tactical.units.filter((u) => u.status === "enroute");
-  const level1  = tactical.units.filter((u) => u.status === "level1");
-  const onscene = tactical.units.filter((u) => u.status === "onscene");
+  const size = irr.buildingSize ? irr.buildingSize.toLowerCase() : "";
+  const height = irr.height ? `${irr.height} story` : "";
 
-  return `
-    <section class="screen screen-tactical">
-      <h1 class="screen-title">Tactical Canvas & Assignments</h1>
-      <p class="screen-desc">
-        This will become the interactive canvas with en route / Level 1 / on-scene
-        units, assignments, benchmarks, and command transfer tools.
-      </p>
-
-      <section class="card">
-        <h2 class="card-title">Quick Summary</h2>
-        <ul class="summary-list">
-          <li><strong>Call Type:</strong> ${incident.callType || "Not set"}</li>
-          <li><strong>Battalion:</strong> ${incident.battalion || "Not set"}</li>
-        </ul>
-      </section>
-
-      <section class="card">
-        <h2 class="card-title">Units by Status</h2>
-        <div class="status-columns">
-          <div class="status-col">
-            <h3>En Route</h3>
-            <div class="status-list">
-              ${
-                enroute.length
-                  ? enroute.map((u) => `<div class="status-pill">${u.label}</div>`).join("")
-                  : `<div class="status-empty">None</div>`
-              }
-            </div>
-          </div>
-          <div class="status-col">
-            <h3>Level 1</h3>
-            <div class="status-list">
-              ${
-                level1.length
-                  ? level1.map((u) => `<div class="status-pill">${u.label}</div>`).join("")
-                  : `<div class="status-empty">None</div>`
-              }
-            </div>
-          </div>
-          <div class="status-col">
-            <h3>On Scene</h3>
-            <div class="status-list">
-              ${
-                onscene.length
-                  ? onscene.map((u) => `<div class="status-pill">${u.label}</div>`).join("")
-                  : `<div class="status-empty">None</div>`
-              }
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <footer class="screen-footer">
-        <button class="nav-btn nav-btn-secondary" id="backToIrrBtn">
-          ◀ Back: IRR
-        </button>
-        <button class="nav-btn nav-btn-primary" id="backToIncidentFromTacBtn">
-          New Incident
-        </button>
-      </footer>
-    </section>
-  `;
-}
-
-function attachTacticalHandlers() {
-  const backBtn = document.getElementById("backToIrrBtn");
-  if (backBtn) {
-    backBtn.addEventListener("click", () => {
-      setScreen("irr");
-    });
+  let occ = "";
+  if (irr.occupancy === "other" && irr.occupancyOther) {
+    occ = irr.occupancyOther;
+  } else if (irr.occupancy === "house") {
+    occ = "house";
+  } else if (irr.occupancy === "apartment") {
+    occ = "apartment";
+  } else if (irr.occupancy === "strip") {
+    occ = "strip center";
+  } else if (irr.occupancy === "commercial") {
+    occ = "commercial building";
   }
 
-  const newIncidentBtn = document.getElementById("backToIncidentFromTacBtn");
-  if (newIncidentBtn) {
-    newIncidentBtn.addEventListener("click", () => {
-      setScreen("incident");
-    });
-  }
+  const condMap = {
+    nothing: "nothing showing",
+    light: "light smoke",
+    heavy: "heavy smoke",
+    working: "working fire",
+    defensive: "defensive conditions",
+  };
+  const cond = irr.conditions ? condMap[irr.conditions] || "" : "";
+
+  const sidesText = (irr.problemSides || [])
+    .map((s) => s.toLowerCase())
+    .join(" ");
+
+  const locFree = (irr.problemLocationText || "").trim();
+  const probPhrase = [sidesText, locFree].filter(Boolean).join(" ");
+
+  const tasks = irr.iapTasks || [];
+  const objectives = irr.iapObjectives || [];
+  const iapLoc = irr.iapLocation ? irr.iapLocation.toLowerCase() : "";
+
+  const taskPhrase = tasks.length ? tasks.join(", ") : "";
+  const objPhrase = objectives.length ? objectives.join(", ") : "";
+
+  const strategyLower = (irr.strategy || "Offensive").toLowerCase();
+
+  const cmdText = normalizeCommandName(irr.commandText || "", unitLabel);
+
+  const partsBuilding = [size, height, occ].filter(Boolean).join(" ");
+
+  const line1 =
+    `${battalion ? battalion + " " : ""}` +
+    `${unitLabel ? "From " + unitLabel + ", " : ""}` +
+    `we are on scene with a ${partsBuilding || "structure"}` +
+    `${cond ? ", with " + cond : ""}` +
+    `${probPhrase ? " on the " + probPhrase : ""}.`;
+
+  const line2 =
+    `${unitLabel ? unitLabel + " " : ""}` +
+    `${taskPhrase ? "will be " + taskPhrase : "will be operating"}` +
+    `${iapLoc ? " on the " + iapLoc + " side" : ""}` +
+    `${objPhrase ? " for " + objPhrase : ""}.`;
+
+  const line3 =
+    `We will be in the ${strategyLower} strategy` +
+    `${cmdText ? ", " + cmdText : ""}.`;
+
+  return [line1, "", line2, "", line3].join("\n");
 }
+
+function normalizeCommandName(raw, unitLabel) {
+  let s = (raw || "").trim();
+  if (!s && unitLabel) {
+    // If they didn’t type anything, give a reasonable default
+    return `${unitLabel} is now Command`;
+  }
+  if (!s) return "";
+
+  // Avoid double "Command"
+  if (/command\.?$/i.test(s)) {
+    return s.replace(/\.*$/, "");
+  }
+  return `${s} Command`;
+}
+
 
 // --- Per-Screen handler dispatcher -----------------------------------------
 
