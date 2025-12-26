@@ -1,15 +1,17 @@
 // app.js
 // Main UI controller for MFD Interactive Tactical System
 
+// app.js
 import {
   getState,
   subscribe,
   setScreen,
   setIncidentField,
   toggleIncidentUnit,
+  setIrrField,
+  toggleIrrArrayField,
+  ALL_UNITS,
 } from "./state.js";
-
-import { ALL_UNITS } from "./state.js";
 
 let rootEl = null;
 
