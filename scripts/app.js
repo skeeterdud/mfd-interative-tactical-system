@@ -379,50 +379,54 @@ function renderIrrScreen(state) {
           </div>
         </div>
 
-         <div class="field-group">
-  <label class="field-label">Location</label>
-  <div class="pill-row">
-    ${[
-      { value: "Alpha",     label: "Alpha" },
-      { value: "Bravo",     label: "Bravo" },
-      { value: "Charlie",   label: "Charlie" },
-      { value: "Delta",     label: "Delta" },
-      { value: "1st Floor", label: "1st Floor" },
-      { value: "2nd Floor", label: "2nd Floor" },
-      { value: "3rd Floor", label: "3rd Floor" },
-      { value: "4th Floor", label: "4th Floor" },
-      { value: "other",     label: "Other" },
-    ]
-      .map(
-        (loc) => `
-      <button
-        class="choice irr-iaploc-btn ${
-          isSelected("iapLocation", loc.value) ? "selected" : ""
-        }"
-        data-field="iapLocation"
-        data-value="${loc.value}"
-      >
-        ${loc.label}
-      </button>
-    `
-      )
-      .join("")}
-  </div>
+                   <div class="field-group">
+            <label class="field-label">Location (multi)</label>
+            <div class="pill-row">
+              ${[
+                { value: "1st Floor", label: "1st Floor" },
+                { value: "2nd Floor", label: "2nd Floor" },
+                { value: "3rd Floor", label: "3rd Floor" },
+                { value: "4th Floor", label: "4th Floor" },
+                { value: "Alpha",     label: "Alpha" },
+                { value: "Bravo",     label: "Bravo" },
+                { value: "Charlie",   label: "Charlie" },
+                { value: "Delta",     label: "Delta" },
+                { value: "other",     label: "Other" },
+              ]
+                .map(
+                  (loc) => `
+                <button
+                  class="choice irr-iaploc-btn ${
+                    Array.isArray(irr.iapLocations) &&
+                    irr.iapLocations.includes(loc.value)
+                      ? "selected"
+                      : ""
+                  }"
+                  data-field="iapLocations"
+                  data-value="${loc.value}"
+                >
+                  ${loc.label}
+                </button>
+              `
+                )
+                .join("")}
+            </div>
 
-  ${
-    irr.iapLocation === "other"
-      ? `
-    <input
-      type="text"
-      class="field-input"
-      id="irrIapLocationOther"
-      placeholder="e.g., interior stairwell, basement, roof division…"
-      value="${irr.iapLocationOther || ""}"
-    />
-  `
-      : ""
-  }
-</div>
+            ${
+              Array.isArray(irr.iapLocations) &&
+              irr.iapLocations.includes("other")
+                ? `
+              <input
+                type="text"
+                class="field-input"
+                id="irrIapLocationOther"
+                placeholder="e.g., interior stairwell, basement, roof division…"
+                value="${irr.iapLocationOther || ""}"
+              />
+            `
+                : ""
+            }
+          </div>
 
           <div class="field-group">
             <label class="field-label">Occupancy Type</label>
