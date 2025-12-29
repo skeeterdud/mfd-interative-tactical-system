@@ -1,7 +1,7 @@
+// =========================
 // scripts/screens/screenC_tactical.js
-// This is your current tactical worksheet view kept intact as Screen C.
-// Next step: we’ll do the “big” redesign you described.
-
+// (kept functional; now prints + cycles status safely)
+// =========================
 import {
   getState,
   setScreen,
@@ -12,23 +12,21 @@ import {
   addBenchmark,
 } from "../state.js";
 
-export function renderScreenC(state) {
+export function renderScreenC(state){
   const { incident, tactical } = state;
 
   const battalionArr = Array.isArray(incident.battalion) ? incident.battalion : [];
   const battalionDisplayText = battalionDisplay(battalionArr[0]) || battalionArr[0] || "Not set";
 
-  const completedBenchmarkIds = new Set((tactical.benchmarks || []).map((b) => b.id));
+  const completedBenchmarkIds = new Set((tactical.benchmarks || []).map(b => b.id));
 
   return `
     <section class="card">
-      <h1 style="margin:0 0 6px 0;">Tactical Worksheet</h1>
-      <p class="helper-text">
-        (We’ll build out your full Screen C canvas/tabs next. This keeps your current tools working.)
-      </p>
+      <div class="helper-text">Step 3 of 3 – Tactical</div>
+      <h1 style="margin:6px 0 0 0;">Tactical Worksheet</h1>
       <ul class="summary-list">
-        <li><strong>Battalion:</strong> ${battalionDisplayText}</li>
-        <li><strong>Units:</strong> ${(tactical.units || []).length ? tactical.units.map(u => u.label).join(", ") : "None"}</li>
+        <li><strong>Battalion:</strong> ${escapeHtml(battalionDisplayText)}</li>
+        <li><strong>Units:</strong> ${(tactical.units || []).length ? escapeHtml(tactical.units.map(u => u.label).join(", ")) : "None"}</li>
       </ul>
     </section>
 
@@ -38,8 +36,8 @@ export function renderScreenC(state) {
       <div class="tactical-unit-grid">
         ${(tactical.units || []).map(u => `
           <button class="unit-chip tactical-unit-chip" data-unit-id="${u.id}" data-status="${u.status}">
-            <span class="unit-label">${u.label}</span>
-            <span class="unit-status">${formatStatus(u.status)}</span>
+            <span class="unit-label">${escapeHtml(u.label)}</span>
+            <span class="unit-status">${escapeHtml(formatStatus(u.status))}</span>
           </button>
         `).join("")}
       </div>
@@ -53,7 +51,7 @@ export function renderScreenC(state) {
           <select id="tacticalIcUnitSelect" class="field-input">
             <option value="">-- Select IC Unit --</option>
             ${(tactical.units || []).map(u => `
-              <option value="${u.id}" ${u.id === tactical.command.currentIcUnitId ? "selected" : ""}>${u.label}</option>
+              <option value="${u.id}" ${u.id === tactical.command.currentIcUnitId ? "selected" : ""}>${escapeHtml(u.label)}</option>
             `).join("")}
           </select>
         </div>
@@ -136,19 +134,16 @@ export function renderScreenC(state) {
   `;
 }
 
-export function attachHandlersC() {
-  // Back
+export function attachHandlersC(){
   const backBtn = document.getElementById("backToIrrBtn");
   if (backBtn) backBtn.addEventListener("click", () => setScreen("irr"));
 
-  // Print
   const printBtn = document.getElementById("printBtn");
   if (printBtn) printBtn.addEventListener("click", () => window.print());
 
-  // Status cycle
-  document.querySelectorAll(".tactical-unit-chip").forEach((btn) => {
+  document.querySelectorAll(".tactical-unit-chip").forEach(btn => {
     btn.addEventListener("click", () => {
-      const unitId = btn.dataset.unitId;
+      const unitId = btn.dataset.unitId || btn.getAttribute("data-unit-id");
       const currentStatus = btn.dataset.status || "available";
       const next = nextStatus(currentStatus);
       if (unitId && next) setUnitStatus(unitId, next);
@@ -156,37 +151,29 @@ export function attachHandlersC() {
     });
   });
 
-  // Command
   const icUnitSelect = document.getElementById("tacticalIcUnitSelect");
   const icNameInput = document.getElementById("tacticalIcNameInput");
-
   const applyCommandUpdate = () => {
-    const unitId = icUnitSelect ? icUnitSelect.value : "";
-    const icName = icNameInput ? icNameInput.value : "";
-    setCommand(unitId, icName);
+    setCommand(icUnitSelect ? icUnitSelect.value : "", icNameInput ? icNameInput.value : "");
     updateTacticalOutput();
   };
-
   if (icUnitSelect) icUnitSelect.addEventListener("change", applyCommandUpdate);
   if (icNameInput) icNameInput.addEventListener("input", applyCommandUpdate);
 
-  // Benchmarks
-  document.querySelectorAll(".benchmark-btn").forEach((btn) => {
+  document.querySelectorAll(".benchmark-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       const id = btn.dataset.benchmarkId;
       const label = btn.dataset.benchmarkLabel;
       if (!id || !label) return;
-
-      const state = getState();
-      const already = (state.tactical.benchmarks || []).some((b) => b.id === id);
+      const s = getState();
+      const already = (s.tactical.benchmarks || []).some(b => b.id === id);
       if (!already) addBenchmark(id, label, []);
       updateTacticalOutput();
     });
   });
 
-  // Follow-up
   const followUpFields = ["r360","safety","confirmStrategy","confirmNotes","resourceDetermination","additional"];
-  followUpFields.forEach((field) => {
+  followUpFields.forEach(field => {
     const el = document.getElementById(`followup_${field}`);
     if (!el) return;
     const evt = el.tagName === "SELECT" ? "change" : "input";
@@ -199,7 +186,7 @@ export function attachHandlersC() {
   updateTacticalOutput();
 }
 
-function updateTacticalOutput() {
+function updateTacticalOutput(){
   const state = getState();
   const { incident, tactical } = state;
 
@@ -210,8 +197,8 @@ function updateTacticalOutput() {
   lines.push(`${battalionText}: tactical update.`);
   lines.push("");
 
-  if (tactical.command.icName || tactical.command.currentIcUnitId) {
-    const icUnit = (tactical.units || []).find((u) => u.id === tactical.command.currentIcUnitId);
+  if (tactical.command.icName || tactical.command.currentIcUnitId){
+    const icUnit = (tactical.units || []).find(u => u.id === tactical.command.currentIcUnitId);
     const icLabel = icUnit ? icUnit.label : tactical.command.currentIcUnitId;
     lines.push(`Command: ${tactical.command.icName || "Command"}${icLabel ? ` (${icLabel})` : ""}.`);
     lines.push("");
@@ -227,42 +214,38 @@ function updateTacticalOutput() {
 
   if (lines[lines.length - 1] !== "") lines.push("");
 
-  if (tactical.benchmarks && tactical.benchmarks.length) {
+  if (tactical.benchmarks && tactical.benchmarks.length){
     lines.push("Benchmarks:");
-    tactical.benchmarks.forEach((b) => {
+    tactical.benchmarks.forEach(b => {
       const timeStr = formatTime(b.completedAt);
       lines.push(`- ${b.label}${timeStr ? ` at ${timeStr}` : ""}.`);
     });
   }
 
   const text = lines.join("\n");
-
   const outEl = document.getElementById("tacticalOutputBox");
   if (outEl) outEl.textContent = text;
-
   setFollowUpGeneratedText(text);
 }
 
-function battalionDisplay(code) {
+function battalionDisplay(code){
   const c = (code || "").trim();
   if (c === "BC1") return "Battalion 1";
   if (c === "BC2") return "Battalion 2";
   return "";
 }
 
-function renderBenchmarkButton(id, label, completedIds) {
+function renderBenchmarkButton(id, label, completedIds){
   const isCompleted = completedIds.has(id);
   return `
-    <button type="button"
-      class="benchmark-btn ${isCompleted ? "completed" : ""}"
-      data-benchmark-id="${id}"
-      data-benchmark-label="${label}">
-      ${label}
+    <button type="button" class="benchmark-btn ${isCompleted ? "completed" : ""}"
+      data-benchmark-id="${id}" data-benchmark-label="${escapeHtml(label)}">
+      ${escapeHtml(label)}
     </button>
   `;
 }
 
-function formatStatus(status) {
+function formatStatus(status){
   if (!status) return "Available";
   if (status === "enroute") return "Enroute";
   if (status === "level1") return "Level 1";
@@ -270,27 +253,27 @@ function formatStatus(status) {
   return "Available";
 }
 
-function nextStatus(status) {
-  const order = ["available", "enroute", "level1", "onscene"];
+function nextStatus(status){
+  const order = ["available","enroute","level1","onscene"];
   const idx = order.indexOf(status);
   if (idx === -1 || idx === order.length - 1) return order[0];
   return order[idx + 1];
 }
 
-function formatTime(iso) {
+function formatTime(iso){
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2,"0");
+  const mm = String(d.getMinutes()).padStart(2,"0");
   return `${hh}:${mm}`;
 }
 
 function escapeHtml(s){
   return String(s ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
 }
