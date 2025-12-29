@@ -283,7 +283,6 @@ export function renderTacticalView(state) {
 }
 
 // Called from app.js after each render on the Tactical screen.
-// (It will be passed `state` but we don't need the argument.)
 export function attachTacticalHandlers() {
   // Back button -> IRR
   const backBtn = document.getElementById("backToIrrBtn");
@@ -299,7 +298,7 @@ export function attachTacticalHandlers() {
       const next = nextStatus(currentStatus);
       if (unitId && next) {
         setUnitStatus(unitId, next);
-        // state change will trigger a full re-render; no need to manually update DOM here
+        // state change will trigger a full re-render via subscribe
       }
     });
   });
@@ -312,7 +311,7 @@ export function attachTacticalHandlers() {
     const unitId = icUnitSelect ? icUnitSelect.value : "";
     const icName = icNameInput ? icNameInput.value : "";
     setCommand(unitId, icName);
-    updateTacticalOutput(); // keep summary in sync
+    updateTacticalOutput();
   };
 
   if (icUnitSelect) {
@@ -337,7 +336,6 @@ export function attachTacticalHandlers() {
         // For now we don't associate specific units; that can be added later
         addBenchmark(id, label, []);
       }
-      // Summary uses benchmarks list
       updateTacticalOutput();
     });
   });
@@ -408,8 +406,8 @@ function updateTacticalOutput() {
     );
     const icLabel = icUnit ? icUnit.label : tactical.command.currentIcUnitId;
     lines.push(
-      `Command: ${tactical.command.icName || "Command"} ${
-        icLabel ? `(${icLabel})` : ""
+      `Command: ${tactical.command.icName || "Command"}${
+        icLabel ? ` (${icLabel})` : ""
       }.`
     );
     lines.push("");
