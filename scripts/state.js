@@ -277,6 +277,33 @@ export function setCommandField(field, value) {
   };
   emit();
 }
+// Sets which unit currently holds command (initially the IRR unit).
+// This is used from Screen B when you select "Unit Giving IRR".
+export function setCommandHolder(unitId) {
+  const id = (unitId || "").trim();
+
+  state = {
+    ...state,
+    tactical: {
+      ...state.tactical,
+      command: {
+        ...state.tactical.command,
+        currentIcUnitId: id,
+        // If IC name isn't set yet, default to incident/command name
+        icName:
+          state.tactical.command.icName ||
+          state.tactical.command.incidentName ||
+          (state.irr.commandText || "").trim(),
+      },
+    },
+    irr: {
+      ...state.irr,
+      irrUnitId: id, // keep IRR unit tied to this selection
+    },
+  };
+
+  emit();
+}
 
 export function setFollowUpField(field, value) {
   state = {
