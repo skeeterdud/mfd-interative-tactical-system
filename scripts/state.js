@@ -4,6 +4,10 @@
 const listeners = new Set();
 
 export const ALL_UNITS = [
+  // Command
+  { id: "BC1", label: "BC1" },
+  { id: "BC2", label: "BC2" },
+
   // Engines / Trucks (match your Size Up order)
   { id: "TRK1", label: "Trk 1" },
   { id: "ENG2", label: "Eng 2" },
@@ -35,13 +39,17 @@ const defaultState = () => ({
   screen: "incident",
 
   incident: {
-    battalion: [], // ["BC1","BC2"]
+    battalion: [], // kept for compatibility (you can ignore or remove later)
     selectedUnitIds: [],
     callType: "Fire",
+
+    // NEW: incident name (auto from command name on Screen B)
+    incidentName: "",
   },
 
-  // Screen B (Size Up style IRR / IAP)
   irr: {
+    irrUnitId: "",
+
     buildingSize: "",
     height: "",
     occupancy: "",
@@ -58,22 +66,26 @@ const defaultState = () => ({
     iapObjectives: [],
 
     strategy: "Offensive",
+
+    // The user-facing command text field (we parse this to incidentName)
     commandText: "",
-    irrUnitId: "",
   },
 
-  // Screen C
   tactical: {
-    // Units selected from Screen A will populate this list
-    units: [],
+    units: [], // synced from incident.selectedUnitIds (but DOES NOT auto-change statuses)
     command: {
-      currentIcUnitId: "",
-      icName: "",
+      // Current command holder (starts as IRR unit, transfers to BC1/BC2)
+      currentCommandUnitId: "",
+      icName: "", // optional display
     },
-    benchmarks: [],
-    notes: "",
 
-    // for backward compatibility with your earlier tactical output
+    // Assignment log / notes
+    log: [],
+
+    // Benchmarks
+    benchmarks: [],
+
+    // Follow-up
     followUp: {
       r360: "",
       safety: "",
@@ -83,9 +95,6 @@ const defaultState = () => ({
       additional: "",
       generatedText: "",
     },
-
-    // Canvas image snapshot for print (optional)
-    canvasDataUrl: "",
   },
 });
 
@@ -109,7 +118,6 @@ export function setScreen(screen) {
   emit();
 }
 
-// ---------- Incident (Screen A) ----------
 export function setIncidentField(field, value) {
   state = {
     ...state,
@@ -133,7 +141,6 @@ export function toggleIncidentUnit(unitId) {
   emit();
 }
 
-// ---------- IRR (Screen B) ----------
 export function setIrrField(field, value) {
   state = {
     ...state,
@@ -148,7 +155,47 @@ export function toggleIrrArrayField(field, value) {
   setIrrField(field, next);
 }
 
-// ---------- Tactical (Screen C) ----------
+// -------------------- Tactical helpers --------------------
+
+export function syncTacticalUnitsFromIncident() {
+  const selected = Array.isArray(state.incident.selectedUnitIds)
+    ? state.incident.selectedUnitIds
+    : [];
+
+  // Preserve existing statuses/assignments if already in tactical.units
+  const existing = new Map((state.tactical.units || []).map(u => [u.id, u]));
+
+  const wanted = selected
+    .map((id) => ALL_UNITS.find((u) => u.id === id))
+    .filter(Boolean)
+    .map((u) => {
+      const prev = existing.get(u.id);
+      return {
+        id: u.id,
+        label: u.label,
+        status: prev?.status || "enroute", // default to enroute (stress-proof)
+        assignment: prev?.assignment || null, // { task, locations[], objectives[] }
+      };
+    });
+
+  // If command holder is missing, clear it
+  const currentCmd = state.tactical.command.currentCommandUnitId;
+  const cmdStillThere = wanted.some(u => u.id === currentCmd);
+
+  state = {
+    ...state,
+    tactical: {
+      ...state.tactical,
+      units: wanted,
+      command: {
+        ...state.tactical.command,
+        currentCommandUnitId: cmdStillThere ? currentCmd : "",
+      },
+    },
+  };
+  emit();
+}
+
 export function setUnitStatus(unitId, status) {
   const nextUnits = (state.tactical.units || []).map((u) =>
     u.id === unitId ? { ...u, status } : u
@@ -157,44 +204,46 @@ export function setUnitStatus(unitId, status) {
   emit();
 }
 
-export function setUnitAssignment(unitId, assignmentPatch) {
-  const nextUnits = (state.tactical.units || []).map((u) => {
-    if (u.id !== unitId) return u;
-    const curA = u.assignment || { task: "", locations: [], objectives: [], notes: "" };
-    return { ...u, assignment: { ...curA, ...assignmentPatch } };
-  });
-
-  state = { ...state, tactical: { ...state.tactical, units: nextUnits } };
-  emit();
-}
-
-export function clearUnitAssignment(unitId) {
-  setUnitAssignment(unitId, { task: "", locations: [], objectives: [], notes: "" });
-}
-
-export function setCommand(unitId, icName) {
+export function setCommandHolder(unitId) {
   state = {
     ...state,
     tactical: {
       ...state.tactical,
-      command: { ...state.tactical.command, currentIcUnitId: unitId, icName },
+      command: { ...state.tactical.command, currentCommandUnitId: unitId },
     },
   };
   emit();
 }
 
-export function setTacticalNotes(text) {
+export function setCommandName(icName) {
   state = {
     ...state,
-    tactical: { ...state.tactical, notes: text },
+    tactical: {
+      ...state.tactical,
+      command: { ...state.tactical.command, icName },
+    },
   };
   emit();
 }
 
-export function setCanvasDataUrl(dataUrl) {
+export function setFollowUpField(field, value) {
   state = {
     ...state,
-    tactical: { ...state.tactical, canvasDataUrl: dataUrl || "" },
+    tactical: {
+      ...state.tactical,
+      followUp: { ...state.tactical.followUp, [field]: value },
+    },
+  };
+  emit();
+}
+
+export function setFollowUpGeneratedText(text) {
+  state = {
+    ...state,
+    tactical: {
+      ...state.tactical,
+      followUp: { ...state.tactical.followUp, generatedText: text },
+    },
   };
   emit();
 }
@@ -212,35 +261,22 @@ export function addBenchmark(id, label, units = []) {
   emit();
 }
 
-// Called when entering Tactical screen
-export function syncTacticalUnitsFromIncident() {
-  const selected = Array.isArray(state.incident.selectedUnitIds)
-    ? state.incident.selectedUnitIds
-    : [];
+export function addLogEntry(text) {
+  const line = (text || "").trim();
+  if (!line) return;
+  const next = [
+    ...(state.tactical.log || []),
+    { text: line, at: new Date().toISOString() },
+  ];
+  state = { ...state, tactical: { ...state.tactical, log: next } };
+  emit();
+}
 
-  const wanted = selected
-    .map((id) => ALL_UNITS.find((u) => u.id === id))
-    .filter(Boolean)
-    .map((u) => ({
-      id: u.id,
-      label: u.label,
-      status: "enroute", // default lane for tactical flow
-      assignment: { task: "", locations: [], objectives: [], notes: "" },
-    }));
-
-  state = {
-    ...state,
-    tactical: {
-      ...state.tactical,
-      units: wanted,
-      command: {
-        ...state.tactical.command,
-        currentIcUnitId: wanted.some((u) => u.id === state.tactical.command.currentIcUnitId)
-          ? state.tactical.command.currentIcUnitId
-          : "",
-      },
-    },
-  };
+export function setUnitAssignment(unitId, assignment) {
+  const nextUnits = (state.tactical.units || []).map((u) =>
+    u.id === unitId ? { ...u, assignment } : u
+  );
+  state = { ...state, tactical: { ...state.tactical, units: nextUnits } };
   emit();
 }
 
