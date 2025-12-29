@@ -18,7 +18,7 @@ export function renderScreenA(state) {
   const isBcSelected = (bc) => battalion.includes(bc);
   const isUnitSelected = (id) => selected.includes(id);
 
-  // Unit order matches your Size Up order (+ EMS1 last)
+  // ✅ Unit order matches Size Up order (+ EMS1 last)
   const orderedUnitIds = [
     "TRK1","ENG2","TRK3","ENG4","TRK5","ENG6","ENG7","TRK9","ENG10","TRK11",
     "MED1","MED2","MED3","MED5","MED6","MED7","MED9","MED10","MED11",
@@ -35,14 +35,14 @@ export function renderScreenA(state) {
   return `
     <section class="card">
       <div class="helper-text">Step 1 of 3 – Select Battalion Chief & Units Responding</div>
-      <h1 class="screen-h1">Incident Setup</h1>
+      <h1 class="screen-title" style="margin:6px 0 0 0;">Incident Setup</h1>
       <p class="helper-text">Tap selections to toggle. Multiple Battalion selections allowed.</p>
     </section>
 
     <section class="card">
       <div class="block ops">
         <h2>Responding Battalion Chief</h2>
-        <div class="grid grid-2">
+        <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
           ${[
             { code: "BC1", label: "Battalion 1" },
             { code: "BC2", label: "Battalion 2" },
@@ -65,13 +65,15 @@ export function renderScreenA(state) {
 
         <div class="unit-grid">
           ${orderedUnitIds
-            .map((id) => `
-              <button type="button"
-                class="choice unit-pill ${isUnitSelected(id) ? "selected" : ""}"
-                data-unit-id="${id}">
-                ${unitLabelById(id)}
-              </button>
-            `)
+            .map(
+              (id) => `
+                <button type="button"
+                  class="choice unit-pill ${isUnitSelected(id) ? "selected" : ""}"
+                  data-unit-id="${id}">
+                  ${unitLabelById(id)}
+                </button>
+              `
+            )
             .join("")}
         </div>
 
@@ -81,9 +83,10 @@ export function renderScreenA(state) {
       </div>
 
       <footer class="screen-footer">
-        <!-- Start Over = different color -->
-        <button class="nav-btn nav-btn-secondary" id="incidentResetBtn">Start Over</button>
-        <button class="nav-btn nav-btn-primary" id="toIrrBtn" ${!canGoNext ? "disabled" : ""}>
+        <button class="nav-btn nav-btn-danger" id="incidentResetBtn">Start Over</button>
+        <button class="nav-btn nav-btn-primary" id="toIrrBtn" ${
+          !canGoNext ? "disabled" : ""
+        }>
           Start IRR ▶
         </button>
       </footer>
@@ -107,7 +110,7 @@ export function attachHandlersA(state) {
     });
   });
 
-  // Units toggle
+  // Units
   document.querySelectorAll(".unit-pill").forEach((btn) => {
     btn.addEventListener("click", () => {
       const unitId = btn.dataset.unitId;
