@@ -75,7 +75,8 @@ function render(state) {
 function renderScreen(state) {
   if (state.screen === "incident") return renderIncidentScreen(state);
   if (state.screen === "irr") return renderIrrScreen(state);
-  return renderTacticalScreen(state);
+  if (state.screen === "tactical") return renderTacticalView(state);
+  return "<div>Unknown screen</div>";
 }
 
 // --- GLOBAL HANDLERS (tabs at top) -----------------------------------------
