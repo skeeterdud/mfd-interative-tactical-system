@@ -520,3 +520,11 @@ button.choice.small{
     background:#ffffff !important;
   }
 }
+/* Start Over / destructive */
+.nav-btn-danger{
+  background: rgba(220,38,38,.92);
+  border-color: rgba(220,38,38,1);
+}
+.nav-btn-danger:hover{
+  filter: brightness(1.03);
+}
