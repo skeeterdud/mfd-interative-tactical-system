@@ -244,7 +244,8 @@ function renderIrrScreen(state) {
     Array.isArray(irr[field]) && irr[field].includes(value);
 
   const sizeupText = buildIrrText(state);
-  const battalionDisplayText = battalionDisplay(battalion) || battalion || "Not set";
+  const battalionDisplayText =
+    battalionDisplay(battalion) || battalion || "Not set";
 
   return `
     <section class="screen screen-irr">
@@ -279,7 +280,9 @@ function renderIrrScreen(state) {
                   .map(
                     (u) => `
             <button
-              class="choice irr-unit-btn ${irr.irrUnitId === u.id ? "selected" : ""}"
+              class="choice irr-unit-btn ${
+                irr.irrUnitId === u.id ? "selected" : ""
+              }"
               data-unit-id="${u.id}"
             >
               ${u.label}
@@ -304,7 +307,9 @@ function renderIrrScreen(state) {
                 .map(
                   (size) => `
                 <button
-                  class="choice irr-single-btn ${isSelected("buildingSize", size) ? "selected" : ""}"
+                  class="choice irr-single-btn ${
+                    isSelected("buildingSize", size) ? "selected" : ""
+                  }"
                   data-field="buildingSize"
                   data-value="${size}"
                 >
@@ -323,7 +328,9 @@ function renderIrrScreen(state) {
                 .map(
                   (h) => `
                 <button
-                  class="choice irr-single-btn ${isSelected("height", h) ? "selected" : ""}"
+                  class="choice irr-single-btn ${
+                    isSelected("height", h) ? "selected" : ""
+                  }"
                   data-field="height"
                   data-value="${h}"
                 >
@@ -348,7 +355,9 @@ function renderIrrScreen(state) {
                 .map(
                   (o) => `
                 <button
-                  class="choice irr-single-btn ${isSelected("occupancy", o.value) ? "selected" : ""}"
+                  class="choice irr-single-btn ${
+                    isSelected("occupancy", o.value) ? "selected" : ""
+                  }"
                   data-field="occupancy"
                   data-value="${o.value}"
                 >
@@ -391,7 +400,9 @@ function renderIrrScreen(state) {
                 .map(
                   (c) => `
                 <button
-                  class="choice irr-single-btn ${isSelected("conditions", c.value) ? "selected" : ""}"
+                  class="choice irr-single-btn ${
+                    isSelected("conditions", c.value) ? "selected" : ""
+                  }"
                   data-field="conditions"
                   data-value="${c.value}"
                 >
@@ -410,7 +421,9 @@ function renderIrrScreen(state) {
                 .map(
                   (side) => `
                 <button
-                  class="choice irr-multi-btn ${isInArray("problemSides", side) ? "selected" : ""}"
+                  class="choice irr-multi-btn ${
+                    isInArray("problemSides", side) ? "selected" : ""
+                  }"
                   data-field="problemSides"
                   data-value="${side}"
                 >
@@ -454,7 +467,9 @@ function renderIrrScreen(state) {
                 .map(
                   (task) => `
                 <button
-                  class="choice irr-multi-btn ${isInArray("iapTasks", task) ? "selected" : ""}"
+                  class="choice irr-multi-btn ${
+                    isInArray("iapTasks", task) ? "selected" : ""
+                  }"
                   data-field="iapTasks"
                   data-value="${task}"
                 >
@@ -483,7 +498,9 @@ function renderIrrScreen(state) {
                 .map(
                   (loc) => `
                 <button
-                  class="choice irr-multi-btn ${isInArray("iapLocations", loc.value) ? "selected" : ""}"
+                  class="choice irr-multi-btn ${
+                    isInArray("iapLocations", loc.value) ? "selected" : ""
+                  }"
                   data-field="iapLocations"
                   data-value="${loc.value}"
                 >
@@ -495,7 +512,8 @@ function renderIrrScreen(state) {
             </div>
 
             ${
-              Array.isArray(irr.iapLocations) && irr.iapLocations.includes("other")
+              Array.isArray(irr.iapLocations) &&
+              irr.iapLocations.includes("other")
                 ? `
               <input
                 type="text"
@@ -516,7 +534,9 @@ function renderIrrScreen(state) {
                 .map(
                   (obj) => `
                 <button
-                  class="choice irr-multi-btn ${isInArray("iapObjectives", obj) ? "selected" : ""}"
+                  class="choice irr-multi-btn ${
+                    isInArray("iapObjectives", obj) ? "selected" : ""
+                  }"
                   data-field="iapObjectives"
                   data-value="${obj}"
                 >
@@ -539,7 +559,9 @@ function renderIrrScreen(state) {
                 .map(
                   (s) => `
                 <button
-                  class="choice irr-single-btn ${irr.strategy === s ? "selected" : ""}"
+                  class="choice irr-single-btn ${
+                    irr.strategy === s ? "selected" : ""
+                  }"
                   data-field="strategy"
                   data-value="${s}"
                 >
@@ -648,11 +670,6 @@ function attachIrrHandlers() {
   }
 }
 
-function attachTacticalHandlers() {
-  const backBtn = document.getElementById("backToIrrBtn");
-  if (backBtn) backBtn.addEventListener("click", () => setScreen("irr"));
-}
-
 // --- HELPERS ---------------------------------------------------------------
 
 function battalionDisplay(code) {
@@ -748,8 +765,12 @@ function buildIrrText(state) {
 
   // IAP tasks / objectives / locations (multi)
   const tasks = Array.isArray(irr.iapTasks) ? irr.iapTasks : [];
-  const objectives = Array.isArray(irr.iapObjectives) ? irr.iapObjectives : [];
-  const iapLocations = Array.isArray(irr.iapLocations) ? irr.iapLocations : [];
+  const objectives = Array.isArray(irr.iapObjectives)
+    ? irr.iapObjectives
+    : [];
+  const iapLocations = Array.isArray(irr.iapLocations)
+    ? irr.iapLocations
+    : [];
 
   const locPhrases = [];
   iapLocations.forEach((loc) => {
@@ -800,6 +821,7 @@ function attachScreenHandlers(state) {
   } else if (state.screen === "irr") {
     attachIrrHandlers(state);
   } else if (state.screen === "tactical") {
-    attachTacticalHandlers(state);
+    // from tacticalView.js
+    attachTacticalHandlers();
   }
 }
