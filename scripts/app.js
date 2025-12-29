@@ -648,33 +648,6 @@ function attachIrrHandlers() {
   }
 }
 
-// --- SCREEN C: Tactical View (safe placeholder) ----------------------------
-// If you already have a Tactical View implementation elsewhere, replace these two.
-
-function renderTacticalScreen(state) {
-  return `
-    <section class="screen screen-tactical">
-      <h1 class="screen-title">Tactical View</h1>
-      <p class="screen-desc">
-        Tactical View placeholder (hook this up to your tactical builder).
-      </p>
-
-      <section class="card">
-        <h2 class="card-title">Coming Soon</h2>
-        <p class="helper-text">
-          Your IRR and incident selections are preserved in state. You can build out the tactical UI here.
-        </p>
-      </section>
-
-      <footer class="screen-footer">
-        <button class="nav-btn nav-btn-secondary" id="backToIrrBtn">
-          ◀ Back: IRR
-        </button>
-      </footer>
-    </section>
-  `;
-}
-
 function attachTacticalHandlers() {
   const backBtn = document.getElementById("backToIrrBtn");
   if (backBtn) backBtn.addEventListener("click", () => setScreen("irr"));
