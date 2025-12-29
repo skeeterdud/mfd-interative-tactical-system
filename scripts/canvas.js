@@ -1,128 +1,118 @@
 // scripts/canvas.js
-// Drawing canvas helper for Screen C (stores as dataUrl in state)
+// Simple drawing canvas that saves to state as a dataURL.
 
 import { getState, setCanvasDataUrl } from "./state.js";
 
-let canvasEl = null;
-let ctx = null;
-
-let drawing = false;
+let isDown = false;
 let lastX = 0;
 let lastY = 0;
 
-// Call after Screen C renders and the canvas exists in the DOM
 export function initCanvas(canvasId = "tacticalCanvas") {
-  canvasEl = document.getElementById(canvasId);
-  if (!canvasEl) return;
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
 
-  ctx = canvasEl.getContext("2d");
+  const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  // Resize to match element size (important for crisp drawing)
-  resizeToDisplaySize();
+  resizeCanvasToCSS(canvas, ctx);
 
-  // Restore saved drawing (if any)
-  restoreFromState();
+  // Load saved drawing (if any)
+  const state = getState();
+  if (state.tactical.canvasDataUrl) {
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0);
+    };
+    img.src = state.tactical.canvasDataUrl;
+  }
 
-  // Pointer events (works for mouse + touch + stylus)
-  canvasEl.addEventListener("pointerdown", onPointerDown);
-  canvasEl.addEventListener("pointermove", onPointerMove);
-  window.addEventListener("pointerup", onPointerUp);
-  window.addEventListener("pointercancel", onPointerUp);
+  const getPos = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * (canvas.width / rect.width),
+      y: (clientY - rect.top) * (canvas.height / rect.height),
+    };
+  };
 
-  // Prevent scroll/zoom gestures from hijacking drawing on touch devices
-  canvasEl.style.touchAction = "none";
+  const down = (e) => {
+    isDown = true;
+    const p = getPos(e);
+    lastX = p.x;
+    lastY = p.y;
+  };
 
-  // If window resizes, keep drawing scaled-ish
+  const move = (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+
+    const p = getPos(e);
+
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "rgba(255,255,255,.95)";
+
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+
+    lastX = p.x;
+    lastY = p.y;
+  };
+
+  const up = () => {
+    if (!isDown) return;
+    isDown = false;
+
+    // Save
+    try {
+      const dataUrl = canvas.toDataURL("image/png");
+      setCanvasDataUrl(dataUrl);
+    } catch {
+      // ignore
+    }
+  };
+
+  // Mouse
+  canvas.addEventListener("mousedown", down);
+  window.addEventListener("mousemove", move);
+  window.addEventListener("mouseup", up);
+
+  // Touch
+  canvas.addEventListener("touchstart", down, { passive: true });
+  canvas.addEventListener("touchmove", move, { passive: false });
+  canvas.addEventListener("touchend", up);
+
+  // Resize handling
   window.addEventListener("resize", () => {
-    const old = canvasEl.toDataURL("image/png");
-    resizeToDisplaySize();
-    redrawFromDataUrl(old);
-    saveToState(); // keep state consistent with new size
+    // Save old image
+    const old = canvas.toDataURL("image/png");
+    resizeCanvasToCSS(canvas, ctx);
+
+    // Restore
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0);
+    img.src = old;
   });
 }
 
-export function clearCanvas() {
-  if (!canvasEl || !ctx) return;
-  ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-  saveToState();
+export function clearCanvas(canvasId = "tacticalCanvas") {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  setCanvasDataUrl("");
 }
 
-export function saveToState() {
-  if (!canvasEl) return;
-  const dataUrl = canvasEl.toDataURL("image/png");
-  setCanvasDataUrl(dataUrl);
-}
-
-function restoreFromState() {
-  const state = getState();
-  const dataUrl = state?.tactical?.canvas?.dataUrl || "";
-  if (dataUrl) redrawFromDataUrl(dataUrl);
-}
-
-function resizeToDisplaySize() {
-  if (!canvasEl) return;
-
-  const rect = canvasEl.getBoundingClientRect();
+function resizeCanvasToCSS(canvas, ctx) {
+  const rect = canvas.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
 
-  const w = Math.max(1, Math.floor(rect.width * dpr));
-  const h = Math.max(1, Math.floor(rect.height * dpr));
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
 
-  if (canvasEl.width !== w) canvasEl.width = w;
-  if (canvasEl.height !== h) canvasEl.height = h;
-
-  // Default pen settings
-  ctx.lineWidth = 3 * dpr;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.strokeStyle = "#e9eefc";
-}
-
-function getCanvasPoint(evt) {
-  const rect = canvasEl.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
-  const x = (evt.clientX - rect.left) * dpr;
-  const y = (evt.clientY - rect.top) * dpr;
-  return { x, y };
-}
-
-function onPointerDown(evt) {
-  if (!canvasEl || !ctx) return;
-  drawing = true;
-  canvasEl.setPointerCapture?.(evt.pointerId);
-
-  const p = getCanvasPoint(evt);
-  lastX = p.x;
-  lastY = p.y;
-}
-
-function onPointerMove(evt) {
-  if (!drawing || !canvasEl || !ctx) return;
-
-  const p = getCanvasPoint(evt);
-  ctx.beginPath();
-  ctx.moveTo(lastX, lastY);
-  ctx.lineTo(p.x, p.y);
-  ctx.stroke();
-
-  lastX = p.x;
-  lastY = p.y;
-}
-
-function onPointerUp() {
-  if (!drawing) return;
-  drawing = false;
-  saveToState();
-}
-
-function redrawFromDataUrl(dataUrl) {
-  if (!canvasEl || !ctx) return;
-
-  const img = new Image();
-  img.onload = () => {
-    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-    ctx.drawImage(img, 0, 0, canvasEl.width, canvasEl.height);
-  };
-  img.src = dataUrl;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
