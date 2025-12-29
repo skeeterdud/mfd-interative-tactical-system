@@ -1,151 +1,128 @@
 // scripts/canvas.js
-// Smartboard-friendly drawing canvas (pen/eraser/clear) using pointer events.
+// Drawing canvas helper for Screen C (stores as dataUrl in state)
 
-import { setCanvasDataUrl } from "./state.js";
+import { getState, setCanvasDataUrl } from "./state.js";
 
-let canvas = null;
+let canvasEl = null;
 let ctx = null;
 
 let drawing = false;
-let tool = "pen"; // "pen" | "eraser"
-let last = { x: 0, y: 0 };
+let lastX = 0;
+let lastY = 0;
 
-// Basic settings (keep simple; no color picking unless you want it later)
-const PEN_WIDTH = 4;
-const ERASER_WIDTH = 20;
+// Call after Screen C renders and the canvas exists in the DOM
+export function initCanvas(canvasId = "tacticalCanvas") {
+  canvasEl = document.getElementById(canvasId);
+  if (!canvasEl) return;
 
-export function initCanvas(canvasEl) {
-  canvas = canvasEl;
-  if (!canvas) return;
+  ctx = canvasEl.getContext("2d");
+  if (!ctx) return;
 
-  ctx = canvas.getContext("2d", { willReadFrequently: false });
+  // Resize to match element size (important for crisp drawing)
+  resizeToDisplaySize();
 
-  // Size to container
-  resizeToCSS();
+  // Restore saved drawing (if any)
+  restoreFromState();
 
-  // Pointer events
-  canvas.style.touchAction = "none";
+  // Pointer events (works for mouse + touch + stylus)
+  canvasEl.addEventListener("pointerdown", onPointerDown);
+  canvasEl.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("pointerup", onPointerUp);
+  window.addEventListener("pointercancel", onPointerUp);
 
-  canvas.addEventListener("pointerdown", onDown);
-  canvas.addEventListener("pointermove", onMove);
-  canvas.addEventListener("pointerup", onUp);
-  canvas.addEventListener("pointercancel", onUp);
-  canvas.addEventListener("pointerleave", onUp);
+  // Prevent scroll/zoom gestures from hijacking drawing on touch devices
+  canvasEl.style.touchAction = "none";
 
-  // Resize observer
-  const ro = new ResizeObserver(() => resizeToCSS(true));
-  ro.observe(canvas.parentElement || canvas);
-
-  // If user rotates / resizes window
-  window.addEventListener("resize", () => resizeToCSS(true));
-}
-
-export function setCanvasTool(nextTool) {
-  tool = nextTool === "eraser" ? "eraser" : "pen";
+  // If window resizes, keep drawing scaled-ish
+  window.addEventListener("resize", () => {
+    const old = canvasEl.toDataURL("image/png");
+    resizeToDisplaySize();
+    redrawFromDataUrl(old);
+    saveToState(); // keep state consistent with new size
+  });
 }
 
 export function clearCanvas() {
-  if (!ctx || !canvas) return;
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.restore();
-
-  snapshotToState();
+  if (!canvasEl || !ctx) return;
+  ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+  saveToState();
 }
 
-export function snapshotToState() {
-  if (!canvas) return;
-  try {
-    const dataUrl = canvas.toDataURL("image/png");
-    setCanvasDataUrl(dataUrl);
-  } catch {
-    // ignore
-  }
+export function saveToState() {
+  if (!canvasEl) return;
+  const dataUrl = canvasEl.toDataURL("image/png");
+  setCanvasDataUrl(dataUrl);
 }
 
-function resizeToCSS(preserve = false) {
-  if (!canvas || !ctx) return;
+function restoreFromState() {
+  const state = getState();
+  const dataUrl = state?.tactical?.canvas?.dataUrl || "";
+  if (dataUrl) redrawFromDataUrl(dataUrl);
+}
 
-  const rect = canvas.getBoundingClientRect();
+function resizeToDisplaySize() {
+  if (!canvasEl) return;
+
+  const rect = canvasEl.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
 
-  // Preserve existing drawing by copying to temp canvas
-  let old = null;
-  if (preserve && canvas.width && canvas.height) {
-    old = document.createElement("canvas");
-    old.width = canvas.width;
-    old.height = canvas.height;
-    const octx = old.getContext("2d");
-    octx.drawImage(canvas, 0, 0);
-  }
+  const w = Math.max(1, Math.floor(rect.width * dpr));
+  const h = Math.max(1, Math.floor(rect.height * dpr));
 
-  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  if (canvasEl.width !== w) canvasEl.width = w;
+  if (canvasEl.height !== h) canvasEl.height = h;
 
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // Default pen settings
+  ctx.lineWidth = 3 * dpr;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-
-  // restore old drawing
-  if (old) {
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(old, 0, 0, old.width, old.height, 0, 0, canvas.width, canvas.height);
-    ctx.restore();
-  }
+  ctx.strokeStyle = "#e9eefc";
 }
 
-function canvasPointFromEvent(e) {
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
+function getCanvasPoint(evt) {
+  const rect = canvasEl.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const x = (evt.clientX - rect.left) * dpr;
+  const y = (evt.clientY - rect.top) * dpr;
   return { x, y };
 }
 
-function onDown(e) {
-  if (!ctx) return;
+function onPointerDown(evt) {
+  if (!canvasEl || !ctx) return;
   drawing = true;
-  canvas.setPointerCapture(e.pointerId);
+  canvasEl.setPointerCapture?.(evt.pointerId);
 
-  const p = canvasPointFromEvent(e);
-  last = p;
-
-  // Start a dot if needed
-  strokeLine(p, p);
+  const p = getCanvasPoint(evt);
+  lastX = p.x;
+  lastY = p.y;
 }
 
-function onMove(e) {
-  if (!drawing || !ctx) return;
+function onPointerMove(evt) {
+  if (!drawing || !canvasEl || !ctx) return;
 
-  const p = canvasPointFromEvent(e);
-  strokeLine(last, p);
-  last = p;
+  const p = getCanvasPoint(evt);
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+
+  lastX = p.x;
+  lastY = p.y;
 }
 
-function onUp(e) {
+function onPointerUp() {
   if (!drawing) return;
   drawing = false;
-
-  // save snapshot for printing
-  snapshotToState();
+  saveToState();
 }
 
-function strokeLine(a, b) {
-  if (!ctx) return;
+function redrawFromDataUrl(dataUrl) {
+  if (!canvasEl || !ctx) return;
 
-  if (tool === "eraser") {
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.lineWidth = ERASER_WIDTH;
-    ctx.strokeStyle = "rgba(0,0,0,1)";
-  } else {
-    ctx.globalCompositeOperation = "source-over";
-    ctx.lineWidth = PEN_WIDTH;
-    ctx.strokeStyle = "#ffffff";
-  }
-
-  ctx.beginPath();
-  ctx.moveTo(a.x, a.y);
-  ctx.lineTo(b.x, b.y);
-  ctx.stroke();
+  const img = new Image();
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+    ctx.drawImage(img, 0, 0, canvasEl.width, canvasEl.height);
+  };
+  img.src = dataUrl;
 }
