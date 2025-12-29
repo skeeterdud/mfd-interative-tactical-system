@@ -12,6 +12,8 @@ import {
   ALL_UNITS,
 } from "./state.js";
 
+import { renderTacticalView, attachTacticalHandlers } from "./tacticalView.js";
+
 let rootEl = null;
 
 // Initialize the app; call this from index.js once DOM is ready
