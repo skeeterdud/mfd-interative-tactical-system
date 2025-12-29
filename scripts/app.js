@@ -1,5 +1,8 @@
+// ===========================
 // app.js
 // Main UI controller for MFD Interactive Tactical System
+// (Updated Screen A: Fire Incident w/ multi-select BC + fixed unit layout incl. EMS 1)
+// ===========================
 
 import {
   getState,
@@ -27,7 +30,7 @@ export function initApp(mountId = "app") {
   const state = getState();
   render(state);
   subscribe(render);
-}
+};
 
 // --- RENDER ROOT ------------------------------------------------------------
 
@@ -90,103 +93,104 @@ function attachGlobalHandlers() {
   });
 }
 
-// --- SCREEN A: INCIDENT SETUP ----------------------------------------------
+// --- SCREEN A: FIRE INCIDENT ------------------------------------------------
 
 function renderIncidentScreen(state) {
   const { incident } = state;
-  const { callType, battalion, selectedUnitIds } = incident;
+  const { battalion, selectedUnitIds } = incident;
 
-  const callTypes = ["Fire", "Accident", "Large Scale Event (EMS, RTF)"];
+  // Battalion is multi-select: store as array in incident.battalion
+  const bcSelected = Array.isArray(battalion) ? battalion : (battalion ? [battalion] : []);
+
+  // Fixed button layout (your exact order + added units)
+  const unitRows = [
+    ["TRK1", "MED1", "ENG6", "MED6"],
+    ["ENG2", "MED2", "ENG7"],
+    ["TRK3", "MED3", "TRK9", "MED9"],
+    ["ENG4", "ENG10", "MED10"],
+    ["TRK5", "MED5", "TRK11", "MED11", "EMS1"],
+  ];
 
   const canGoNext =
-    callType &&
-    battalion &&
+    bcSelected.length > 0 &&
     Array.isArray(selectedUnitIds) &&
     selectedUnitIds.length > 0;
 
+  const unitLabelById = (id) => {
+    const u = ALL_UNITS.find((x) => x.id === id);
+    return u ? u.label : id;
+  };
+
+  const isUnitSelected = (id) => Array.isArray(selectedUnitIds) && selectedUnitIds.includes(id);
+  const isBcSelected = (bcCode) => bcSelected.includes(bcCode);
+
   return `
     <section class="screen screen-incident">
-      <h1 class="screen-title">Incident Setup</h1>
-      <p class="screen-desc">
-        Select battalion, call type, and which units are responding for this incident.
-      </p>
-
-      <div class="card-row">
-        <section class="card">
-          <h2 class="card-title">Call Type</h2>
-          <div class="calltype-row">
-            ${callTypes
-              .map(
-                (type) => `
-              <label class="pill-option">
-                <input 
-                  type="radio" 
-                  name="callType" 
-                  value="${type}"
-                  ${callType === type ? "checked" : ""} 
-                />
-                <span>${type}</span>
-              </label>
-            `
-              )
-              .join("")}
-          </div>
-        </section>
-
-        <section class="card">
-          <h2 class="card-title">Battalion</h2>
-          <div class="calltype-row">
-            ${["BC1", "BC2"]
-              .map(
-                (b) => `
-              <label class="pill-option">
-                <input 
-                  type="radio" 
-                  name="battalion" 
-                  value="${b}"
-                  ${battalion === b ? "checked" : ""} 
-                />
-                <span>${b}</span>
-              </label>
-            `
-              )
-              .join("")}
-          </div>
-          <p class="helper-text">
-            This battalion will carry forward into the IRR and Tactical views.
-          </p>
-        </section>
-      </div>
+      <h1 class="screen-title">Fire Incident</h1>
 
       <section class="card">
-        <h2 class="card-title">Units Responding</h2>
-        <p class="helper-text">
-          Tap to include units on the assignment. We can refine dispatch logic later.
-        </p>
-        <div class="unit-grid">
-          ${ALL_UNITS.map((u) => {
-            const checked = selectedUnitIds.includes(u.id) ? "checked" : "";
-            return `
-              <label class="unit-chip">
-                <input 
-                  type="checkbox" 
-                  class="unit-checkbox" 
-                  data-unit-id="${u.id}" 
-                  ${checked}
-                />
-                <span class="unit-label">${u.label}</span>
-              </label>
-            `;
-          }).join("")}
+        <h2 class="card-title">Responding Battalion Chief:</h2>
+        <div class="pill-row">
+          ${[
+            { code: "BC1", label: "Battalion 1" },
+            { code: "BC2", label: "Battalion 2" },
+          ]
+            .map(
+              (b) => `
+              <button
+                type="button"
+                class="choice bc-pill ${isBcSelected(b.code) ? "selected" : ""}"
+                data-bc="${b.code}"
+              >
+                ${b.label}
+              </button>
+            `
+            )
+            .join("")}
         </div>
+        <p class="helper-text">Tap to toggle. Multiple selections allowed.</p>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">Responding Units:</h2>
+
+        <div class="unit-grid unit-grid-fixed">
+          ${unitRows
+            .map(
+              (row) => `
+                <div class="unit-grid-row">
+                  ${row
+                    .map((id) => {
+                      const selected = isUnitSelected(id);
+                      return `
+                        <button
+                          type="button"
+                          class="choice unit-pill ${selected ? "selected" : ""}"
+                          data-unit-id="${id}"
+                        >
+                          ${unitLabelById(id)}
+                        </button>
+                      `;
+                    })
+                    .join("")}
+                </div>
+              `
+            )
+            .join("")}
+        </div>
+
+        <p class="helper-text">
+          Tap to toggle units responding. This list carries into IRR and Tactical View.
+        </p>
       </section>
 
       <footer class="screen-footer">
-        <button class="nav-btn nav-btn-secondary" disabled>
-          ◀ Back
+        <button class="nav-btn nav-btn-secondary" id="incidentResetBtn">
+          Start Over
         </button>
-        <button 
-          class="nav-btn nav-btn-primary" 
+
+        <button
+          class="nav-btn nav-btn-primary"
           id="toIrrBtn"
           ${!canGoNext ? "disabled" : ""}
         >
@@ -198,29 +202,38 @@ function renderIncidentScreen(state) {
 }
 
 function attachIncidentHandlers(state) {
-  // Call type radios
-  document.querySelectorAll('input[name="callType"]').forEach((input) => {
-    input.addEventListener("change", () => {
-      setIncidentField("callType", input.value);
+  // Battalion Chief multi-select
+  document.querySelectorAll(".bc-pill").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const bc = btn.dataset.bc;
+      if (!bc) return;
+
+      const current = state.incident.battalion;
+      const arr = Array.isArray(current) ? current.slice() : (current ? [current] : []);
+
+      const next = arr.includes(bc) ? arr.filter((x) => x !== bc) : [...arr, bc];
+      setIncidentField("battalion", next);
     });
   });
 
-  // Battalion radios
-  document.querySelectorAll('input[name="battalion"]').forEach((input) => {
-    input.addEventListener("change", () => {
-      setIncidentField("battalion", input.value);
-    });
-  });
-
-  // Unit checkboxes
-  document.querySelectorAll(".unit-checkbox").forEach((cb) => {
-    cb.addEventListener("change", () => {
-      const unitId = cb.dataset.unitId;
+  // Unit toggles
+  document.querySelectorAll(".unit-pill").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const unitId = btn.dataset.unitId;
       if (unitId) toggleIncidentUnit(unitId);
     });
   });
 
-  // Next button
+  // Start Over
+  const resetBtn = document.getElementById("incidentResetBtn");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      setIncidentField("battalion", []);
+      setIncidentField("selectedUnitIds", []);
+    });
+  }
+
+  // Next
   const nextBtn = document.getElementById("toIrrBtn");
   if (nextBtn) {
     nextBtn.addEventListener("click", () => {
@@ -244,8 +257,11 @@ function renderIrrScreen(state) {
     Array.isArray(irr[field]) && irr[field].includes(value);
 
   const sizeupText = buildIrrText(state);
+
+  // battalion is now possibly an array (multi-select on Screen A)
+  const battalionCodeForDisplay = Array.isArray(battalion) ? battalion[0] : battalion;
   const battalionDisplayText =
-    battalionDisplay(battalion) || battalion || "Not set";
+    battalionDisplay(battalionCodeForDisplay) || battalionCodeForDisplay || "Not set";
 
   return `
     <section class="screen screen-irr">
@@ -258,7 +274,7 @@ function renderIrrScreen(state) {
       <section class="card">
         <h2 class="card-title">Incident Context</h2>
         <ul class="summary-list">
-          <li><strong>Call Type:</strong> ${callType || "Not set"}</li>
+          <li><strong>Call Type:</strong> ${callType || "Fire"}</li>
           <li><strong>Battalion:</strong> ${battalionDisplayText}</li>
           <li><strong>Units Responding:</strong> ${
             respondingUnits.length
@@ -614,7 +630,7 @@ function attachIrrHandlers() {
   const nextBtn = document.getElementById("toTacticalBtn");
   if (nextBtn) nextBtn.addEventListener("click", () => setScreen("tactical"));
 
-  // IRR unit selection
+  // IRR unit selection (EMS 1 acts like all other units, so keep it included)
   document.querySelectorAll(".irr-unit-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const id = btn.dataset.unitId;
@@ -714,7 +730,13 @@ function normalizeCommandName(raw, unitLabel) {
 
 function buildIrrText(state) {
   const { incident, irr } = state;
-  const battalionText = battalionDisplay(incident.battalion);
+
+  // battalion is now possibly an array; use first for now
+  const battalionCodeForDisplay = Array.isArray(incident.battalion)
+    ? incident.battalion[0]
+    : incident.battalion;
+
+  const battalionText = battalionDisplay(battalionCodeForDisplay);
 
   const irrUnit = ALL_UNITS.find((u) => u.id === irr.irrUnitId);
   const unitLabel = irrUnit ? irrUnit.label : "";
@@ -753,7 +775,6 @@ function buildIrrText(state) {
 
   let probPhrase = "";
   if (locFree && sides.length) {
-    // e.g., "alpha / bravo 2nd floor rear"
     probPhrase = `${sidesText} ${locFree}`.trim();
   } else if (locFree && !sides.length) {
     probPhrase = locFree;
@@ -765,12 +786,8 @@ function buildIrrText(state) {
 
   // IAP tasks / objectives / locations (multi)
   const tasks = Array.isArray(irr.iapTasks) ? irr.iapTasks : [];
-  const objectives = Array.isArray(irr.iapObjectives)
-    ? irr.iapObjectives
-    : [];
-  const iapLocations = Array.isArray(irr.iapLocations)
-    ? irr.iapLocations
-    : [];
+  const objectives = Array.isArray(irr.iapObjectives) ? irr.iapObjectives : [];
+  const iapLocations = Array.isArray(irr.iapLocations) ? irr.iapLocations : [];
 
   const locPhrases = [];
   iapLocations.forEach((loc) => {
@@ -821,7 +838,6 @@ function attachScreenHandlers(state) {
   } else if (state.screen === "irr") {
     attachIrrHandlers(state);
   } else if (state.screen === "tactical") {
-    // from tacticalView.js
     attachTacticalHandlers();
   }
 }
