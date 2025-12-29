@@ -1,313 +1,193 @@
 // scripts/screens/screenC_tactical.js
-// Screen C: Canvas workspace + bottom tabs + unit assignment modal
+// Screen C: Drawing canvas + bottom tabs + unit assignment workflow
 
 import {
   getState,
   setScreen,
+  setActiveTab,
+  setActiveUnit,
   setUnitStatus,
   setUnitAssignment,
   clearUnitAssignment,
-  setCommand,
+  setCommandField,
+  setFollowUpField,
+  setFollowUpGeneratedText,
   addBenchmark,
-  setTacticalNotes,
 } from "../state.js";
 
-import { initCanvas, setCanvasTool, clearCanvas, snapshotToState } from "../canvas.js";
+import { initCanvas, clearCanvas } from "../canvas.js";
 
-const TABS = [
-  { id: "units", label: "Units" },
-  { id: "benchmarks", label: "Benchmarks" },
-  { id: "command", label: "Command" },
-  { id: "notes", label: "Notes" },
-  { id: "print", label: "Print" },
-];
-
-// Assignment options (easy to tweak later)
 const TASKS = [
-  "Investigate",
+  "Primary Search",
+  "Fire Attack",
+  "Backup Line",
   "Water Supply",
-  "Attack Line",
-  "Search",
   "Ventilation",
+  "Forcible Entry",
   "RIT",
-  "Exposure",
+  "Exposure Protection",
   "Utilities",
-  "Salvage",
-  "Defensive Ops",
+  "Salvage / Overhaul",
 ];
 
 const LOCATIONS = [
-  "Alpha",
-  "Bravo",
-  "Charlie",
-  "Delta",
   "1st Floor",
   "2nd Floor",
   "3rd Floor",
   "4th Floor",
-  "Roof",
-  "Attic",
   "Basement",
-  "Interior",
-  "Exterior",
-  "Rear",
+  "Roof",
+  "Alpha",
+  "Bravo",
+  "Charlie",
+  "Delta",
   "Garage",
+  "Backyard",
+  "Other",
 ];
 
 const OBJECTIVES = [
+  "Search",
   "Fire Attack",
-  "Primary Search",
-  "Secondary Search",
-  "Vent",
-  "RIT",
-  "Exposure Protection",
+  "Life Safety",
+  "Containment",
+  "Ventilation",
+  "Stop Extension",
   "Water Supply",
   "Overhaul",
 ];
 
 export function renderScreenC(state) {
-  const { incident, tactical } = state;
+  const { tactical, incident } = state;
 
   const battalionArr = Array.isArray(incident.battalion) ? incident.battalion : [];
-  const battalionText = battalionDisplay(battalionArr[0]) || battalionArr[0] || "Command";
+  const battalionText = battalionArr[0] || "BC";
 
-  const activeTab = tactical._uiTab || "units";
+  // Sort units: Level 1 first, then assigned, then enroute
+  const units = (tactical.units || []).slice().sort((a, b) => {
+    const rank = (s) => (s === "level1" ? 0 : s === "assigned" ? 1 : 2);
+    return rank(a.status) - rank(b.status);
+  });
 
-  const units = Array.isArray(tactical.units) ? tactical.units : [];
-  const level1Units = units.filter((u) => u.status === "level1");
+  const activeTab = tactical.activeTab || "units";
+
+  const activeUnit =
+    tactical.activeUnitId
+      ? units.find((u) => u.id === tactical.activeUnitId)
+      : null;
 
   return `
     <section class="tactical-shell">
-      <!-- TOP STRIP: Level 1 pinned -->
-      <div class="level1-strip">
-        <div class="level1-strip-title">LEVEL 1</div>
-        <div class="level1-strip-row">
-          ${
-            level1Units.length
-              ? level1Units
-                  .map((u) => unitChipHtml(u, true))
-                  .join("")
-              : `<div class="level1-strip-empty">No Level 1 units</div>`
-          }
-        </div>
-      </div>
+      <!-- BIG CANVAS -->
+      <section class="canvas-card">
+        <div class="canvas-topbar">
+          <div class="canvas-title">
+            <div class="canvas-title-main">Tactical Canvas</div>
+            <div class="canvas-title-sub">
+              Incident: <b>${escapeHtml(tactical.command.incidentName || tactical.command.icName || "—")}</b>
+            </div>
+          </div>
 
-      <!-- CANVAS WORKSPACE -->
-      <div class="canvas-wrap card">
-        <div class="canvas-toolbar">
-          <div class="canvas-title">${escapeHtml(battalionText)} – Tactical Canvas</div>
-
-          <div class="canvas-tools">
-            <button class="choice small canvas-tool" data-tool="pen">Pen</button>
-            <button class="choice small canvas-tool" data-tool="eraser">Eraser</button>
-            <button class="choice small canvas-clear" id="canvasClearBtn">Clear</button>
+          <div class="canvas-actions">
+            <button class="nav-btn" id="canvasClearBtn">Clear</button>
           </div>
         </div>
 
-        <div class="canvas-stage">
-          <canvas id="tacticalCanvas"></canvas>
+        <div class="canvas-wrap">
+          <canvas id="tacticalCanvas" class="tactical-canvas"></canvas>
         </div>
-      </div>
+      </section>
 
-      <!-- BOTTOM PANEL -->
-      <div class="bottom-panel card">
-        <div class="bottom-panel-header">
-          <div class="bottom-panel-title">${tabLabel(activeTab)}</div>
-          <div class="bottom-panel-actions">
-            <button class="nav-btn" id="backToIrrBtn">◀ Back: IRR</button>
-          </div>
-        </div>
+      <!-- TAB CONTENT -->
+      <section class="tab-card">
+        ${renderTabContent(activeTab, units, state)}
+      </section>
 
-        <div class="bottom-panel-content">
-          ${renderTabContent(activeTab, state)}
-        </div>
+      <!-- BOTTOM TABS -->
+      <nav class="bottom-tabs">
+        ${renderTabButton("units", "Units", activeTab)}
+        ${renderTabButton("benchmarks", "Benchmarks", activeTab)}
+        ${renderTabButton("followup", "Follow-Up", activeTab)}
+        ${renderTabButton("command", "Command", activeTab)}
+        ${renderTabButton("transfer", "Transfer", activeTab)}
+      </nav>
 
-        <div class="bottom-tabs">
-          ${TABS.map((t) => `
-            <button class="bottom-tab ${activeTab === t.id ? "active" : ""}" data-tab="${t.id}">
-              ${t.label}
-            </button>
-          `).join("")}
-        </div>
-      </div>
+      <!-- MODAL: UNIT ASSIGNMENT -->
+      ${activeUnit ? renderAssignModal(activeUnit) : ""}
 
-      <!-- MODAL ROOT -->
-      <div id="modalRoot"></div>
+      <!-- FOOTER NAV -->
+      <footer class="screen-footer">
+        <button class="nav-btn" id="backToIrrBtn">◀ Back: IRR</button>
+        <button class="nav-btn nav-btn-primary" id="printBtn">Print / PDF</button>
+      </footer>
     </section>
   `;
 }
 
-export function attachHandlersC(state) {
-  // Back
-  const backBtn = document.getElementById("backToIrrBtn");
-  if (backBtn) backBtn.addEventListener("click", () => setScreen("irr"));
-
-  // Init canvas
-  const canvas = document.getElementById("tacticalCanvas");
-  if (canvas) initCanvas(canvas);
-
-  // Canvas tools
-  document.querySelectorAll(".canvas-tool").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const t = btn.dataset.tool;
-      setCanvasTool(t);
-      // button highlight
-      document.querySelectorAll(".canvas-tool").forEach((b) => b.classList.remove("selected"));
-      btn.classList.add("selected");
-    });
-  });
-
-  // default select pen button
-  const penBtn = document.querySelector('.canvas-tool[data-tool="pen"]');
-  if (penBtn) penBtn.classList.add("selected");
-
-  const clearBtn = document.getElementById("canvasClearBtn");
-  if (clearBtn) clearBtn.addEventListener("click", () => clearCanvas());
-
-  // Tabs
-  document.querySelectorAll(".bottom-tab").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tab = btn.dataset.tab;
-      if (!tab) return;
-      const cur = getState();
-      cur.tactical._uiTab = tab;
-      // force re-render through emit by nudging notes (safe) OR just set notes to same
-      // easiest: update notes to same value triggers emit
-      setTacticalNotes(cur.tactical.notes || "");
-    });
-  });
-
-  // Units: open modal
-  document.querySelectorAll("[data-open-unit]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const unitId = btn.dataset.openUnit;
-      if (!unitId) return;
-      openUnitModal(unitId);
-    });
-  });
-
-  // Benchmarks
-  document.querySelectorAll(".benchmark-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.benchmarkId;
-      const label = btn.dataset.benchmarkLabel;
-      if (!id || !label) return;
-      addBenchmark(id, label, []);
-      snapshotToState(); // keep print up to date
-    });
-  });
-
-  // Command
-  const icUnit = document.getElementById("icUnitSelect");
-  const icName = document.getElementById("icNameInput");
-  const applyCommand = () => {
-    const u = icUnit ? icUnit.value : "";
-    const n = icName ? icName.value : "";
-    setCommand(u, n);
-  };
-  if (icUnit) icUnit.addEventListener("change", applyCommand);
-  if (icName) icName.addEventListener("input", applyCommand);
-
-  // Notes
-  const notes = document.getElementById("tacticalNotes");
-  if (notes) {
-    notes.addEventListener("input", () => setTacticalNotes(notes.value));
-  }
-
-  // Print
-  const printBtn = document.getElementById("printNowBtn");
-  if (printBtn) {
-    printBtn.addEventListener("click", () => {
-      snapshotToState(); // capture canvas
-      window.print();
-    });
-  }
-}
-
-// ---------------- Tabs ----------------
-
-function tabLabel(id) {
-  const t = TABS.find((x) => x.id === id);
-  return t ? t.label : "Units";
-}
-
-function renderTabContent(tab, state) {
-  if (tab === "units") return renderUnitsTab(state);
+function renderTabContent(tab, units, state) {
+  if (tab === "units") return renderUnitsTab(units);
   if (tab === "benchmarks") return renderBenchmarksTab(state);
+  if (tab === "followup") return renderFollowUpTab(state);
   if (tab === "command") return renderCommandTab(state);
-  if (tab === "notes") return renderNotesTab(state);
-  if (tab === "print") return renderPrintTab(state);
-  return renderUnitsTab(state);
+  if (tab === "transfer") return renderTransferTab(state);
+  return `<div class="helper-text">Unknown tab.</div>`;
 }
 
-function renderUnitsTab(state) {
-  const units = Array.isArray(state.tactical.units) ? state.tactical.units : [];
-
-  const enroute = units.filter((u) => u.status === "enroute");
-  const level1 = units.filter((u) => u.status === "level1");
-  const onscene = units.filter((u) => u.status === "onscene");
-
+function renderUnitsTab(units) {
   return `
-    <div class="lanes">
-      ${laneHtml("Enroute", "enroute", enroute)}
-      ${laneHtml("Level 1", "level1", level1)}
-      ${laneHtml("On Scene", "onscene", onscene)}
-    </div>
+    <h2 class="card-title">Units</h2>
+    <p class="helper-text">
+      Tap a unit to open assignment. Status:
+      <b>Enroute</b> → <b>Level 1</b> → <b>Assigned</b>.
+    </p>
 
-    <div class="helper-text" style="margin-top:10px;">
-      Tap a unit to set status and build an assignment: Task → Locations (multi) → Objectives (multi).
+    <div class="unit-board">
+      ${units.map((u) => renderUnitCard(u)).join("")}
     </div>
   `;
 }
 
-function laneHtml(title, statusKey, units) {
-  return `
-    <div class="lane">
-      <div class="lane-title">${title}</div>
-      <div class="lane-list">
-        ${
-          units.length
-            ? units.map((u) => unitRowHtml(u)).join("")
-            : `<div class="lane-empty">No units</div>`
-        }
-      </div>
-    </div>
-  `;
-}
-
-function unitRowHtml(u) {
+function renderUnitCard(u) {
   const a = u.assignment || {};
-  const summary = assignmentSummary(a);
+  const hasAssignment = !!(a.task || (a.locations && a.locations.length) || (a.objectives && a.objectives.length) || a.notes);
+
+  const assignmentLine = hasAssignment
+    ? `
+      <div class="unit-assign">
+        <div><b>Task:</b> ${escapeHtml(a.task || "—")}</div>
+        <div><b>Loc:</b> ${escapeHtml((a.locations || []).join(", ") || "—")}</div>
+        <div><b>Obj:</b> ${escapeHtml((a.objectives || []).join(", ") || "—")}</div>
+      </div>
+    `
+    : `<div class="unit-assign muted">No assignment yet.</div>`;
 
   return `
-    <button class="unit-row" data-open-unit="${escapeAttr(u.id)}">
-      <div class="unit-row-left">
-        <div class="unit-row-label">${escapeHtml(u.label)}</div>
-        <div class="unit-row-status">${formatStatus(u.status)}</div>
+    <button class="unit-card status-${u.status}" data-unit-open="${u.id}">
+      <div class="unit-card-top">
+        <div class="unit-name">${escapeHtml(u.label)}</div>
+        <div class="unit-status-pill">${formatStatus(u.status)}</div>
       </div>
-      <div class="unit-row-assign ${summary ? "" : "is-empty"}">
-        ${summary ? escapeHtml(summary) : "Assignment…"}
-      </div>
-    </button>
-  `;
-}
 
-function unitChipHtml(u, compact) {
-  const a = u.assignment || {};
-  const summary = assignmentSummary(a);
-  return `
-    <button class="unit-chip ${compact ? "compact" : ""}" data-open-unit="${escapeAttr(u.id)}">
-      <div class="unit-chip-label">${escapeHtml(u.label)}</div>
-      ${summary ? `<div class="unit-chip-sub">${escapeHtml(summary)}</div>` : ""}
+      <div class="unit-status-row">
+        <div class="status-bubbles">
+          <span class="bubble ${u.status === "enroute" ? "on" : ""}">Enroute</span>
+          <span class="bubble ${u.status === "level1" ? "on" : ""}">Level 1</span>
+          <span class="bubble ${u.status === "assigned" ? "on" : ""}">Assigned</span>
+        </div>
+      </div>
+
+      ${assignmentLine}
     </button>
   `;
 }
 
 function renderBenchmarksTab(state) {
   const completed = new Set((state.tactical.benchmarks || []).map((b) => b.id));
-  const list = (state.tactical.benchmarks || []).slice();
 
   return `
+    <h2 class="card-title">Benchmarks</h2>
+    <p class="helper-text">Tap to mark complete.</p>
+
     <div class="benchmark-row">
       ${renderBenchmarkButton("primarySearchAllClear","Primary Search All Clear",completed)}
       ${renderBenchmarkButton("fireUnderControl","Fire Under Control",completed)}
@@ -316,322 +196,503 @@ function renderBenchmarksTab(state) {
     </div>
 
     ${
-      list.length
+      (state.tactical.benchmarks || []).length
         ? `
           <div style="margin-top:12px;">
-            <div class="field-label">Completed</div>
+            <label class="field-label">Completed</label>
             <ul class="summary-list">
-              ${list
-                .map((b) => `<li><strong>${escapeHtml(b.label)}</strong> @ ${escapeHtml(formatTime(b.completedAt))}</li>`)
-                .join("")}
+              ${(state.tactical.benchmarks || []).map(b => `
+                <li><b>${escapeHtml(b.label)}</b> @ ${escapeHtml(formatTime(b.completedAt))}</li>
+              `).join("")}
             </ul>
           </div>
         `
-        : `<div class="helper-text" style="margin-top:10px;">No benchmarks marked yet.</div>`
+        : `<div class="helper-text">No benchmarks yet.</div>`
     }
   `;
 }
 
-function renderCommandTab(state) {
-  const units = Array.isArray(state.tactical.units) ? state.tactical.units : [];
-  const cmd = state.tactical.command || { currentIcUnitId: "", icName: "" };
-
+function renderFollowUpTab(state) {
+  const f = state.tactical.followUp || {};
   return `
+    <h2 class="card-title">Follow-Up</h2>
+
     <div class="followup-grid">
       <div class="field-group">
-        <label class="field-label">IC Unit</label>
-        <select id="icUnitSelect" class="field-input">
-          <option value="">-- Select IC Unit --</option>
-          ${units.map((u) => `
-            <option value="${escapeAttr(u.id)}" ${u.id === cmd.currentIcUnitId ? "selected" : ""}>
-              ${escapeHtml(u.label)}
-            </option>
+        <label class="field-label">360 Status</label>
+        <select id="followup_r360" class="field-input">
+          <option value=""></option>
+          ${["Not completed","In progress","Completed"].map(v => `
+            <option value="${v}" ${f.r360 === v ? "selected" : ""}>${v}</option>
           `).join("")}
         </select>
       </div>
 
       <div class="field-group">
-        <label class="field-label">Command Name</label>
-        <input id="icNameInput" class="field-input" type="text"
-          placeholder="e.g., Main Street Command"
+        <label class="field-label">Safety</label>
+        <input type="text" id="followup_safety" class="field-input"
+          placeholder="Hazards, accountability, collapse zones..."
+          value="${escapeHtml(f.safety || "")}" />
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Strategy Confirmation</label>
+        <input type="text" id="followup_confirmStrategy" class="field-input"
+          placeholder="Remaining offensive/defensive..."
+          value="${escapeHtml(f.confirmStrategy || "")}" />
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Strategy Notes</label>
+        <textarea id="followup_confirmNotes" class="field-input" rows="2"
+          placeholder="CAN-level notes...">${escapeHtml(f.confirmNotes || "")}</textarea>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Resource Determination</label>
+        <textarea id="followup_resourceDetermination" class="field-input" rows="2"
+          placeholder="More engines/trucks/medics...">${escapeHtml(f.resourceDetermination || "")}</textarea>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Additional Info</label>
+        <textarea id="followup_additional" class="field-input" rows="2"
+          placeholder="Other notes...">${escapeHtml(f.additional || "")}</textarea>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;">
+      <label class="field-label">Generated Tactical Summary</label>
+      <pre class="output" id="tacticalOutputBox">${escapeHtml(f.generatedText || "")}</pre>
+    </div>
+  `;
+}
+
+function renderCommandTab(state) {
+  const cmd = state.tactical.command || {};
+  const units = state.tactical.units || [];
+  return `
+    <h2 class="card-title">Command</h2>
+    <p class="helper-text">
+      Incident Name auto-fills from IRR Command Name (Screen B).
+    </p>
+
+    <div class="followup-grid">
+      <div class="field-group">
+        <label class="field-label">Incident Name</label>
+        <input id="cmd_incidentName" class="field-input" type="text"
+          value="${escapeHtml(cmd.incidentName || "")}"
+          placeholder="Main Street Command" />
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">IC Unit</label>
+        <select id="cmd_icUnit" class="field-input">
+          <option value="">-- Select IC Unit --</option>
+          ${units.map(u => `
+            <option value="${u.id}" ${u.id === cmd.currentIcUnitId ? "selected" : ""}>${escapeHtml(u.label)}</option>
+          `).join("")}
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">IC Name / Command Name</label>
+        <input id="cmd_icName" class="field-input" type="text"
           value="${escapeHtml(cmd.icName || "")}"
-        />
+          placeholder="Main Street Command" />
       </div>
     </div>
   `;
 }
 
-function renderNotesTab(state) {
+function renderTransferTab(state) {
+  const cmd = state.tactical.command || {};
   return `
-    <div class="field-group">
-      <label class="field-label">Tactical Notes</label>
-      <textarea id="tacticalNotes" class="field-input" rows="6"
-        placeholder="Divisions/groups, hazards, CAN notes, priorities, etc."
-      >${escapeHtml(state.tactical.notes || "")}</textarea>
+    <h2 class="card-title">Command Transfer</h2>
+    <p class="helper-text">
+      Use this as your note pad for transfer + CAN.
+    </p>
+
+    <div class="followup-grid">
+      <div class="field-group">
+        <label class="field-label">Transfer To</label>
+        <select id="xfer_to" class="field-input">
+          <option value=""></option>
+          ${["BC1","BC2"].map(v => `
+            <option value="${v}" ${cmd.transferTo === v ? "selected" : ""}>${v}</option>
+          `).join("")}
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">CAN - Conditions</label>
+        <textarea id="xfer_canC" class="field-input" rows="2"
+          placeholder="Conditions...">${escapeHtml(cmd.canConditions || "")}</textarea>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">CAN - Actions</label>
+        <textarea id="xfer_canA" class="field-input" rows="2"
+          placeholder="Actions...">${escapeHtml(cmd.canActions || "")}</textarea>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">CAN - Needs</label>
+        <textarea id="xfer_canN" class="field-input" rows="2"
+          placeholder="Needs...">${escapeHtml(cmd.canNeeds || "")}</textarea>
+      </div>
     </div>
-    <div class="helper-text">Notes are saved in state and will print with the worksheet.</div>
+
+    <div style="margin-top:12px;" class="helper-text">
+      Tip: After transfer, update “IC Unit” and “IC Name” in the Command tab.
+    </div>
   `;
 }
 
-function renderPrintTab(state) {
-  const incident = state.incident || {};
-  const battalionArr = Array.isArray(incident.battalion) ? incident.battalion : [];
-  const battalionText = battalionDisplay(battalionArr[0]) || battalionArr[0] || "Command";
-
-  const units = Array.isArray(state.tactical.units) ? state.tactical.units : [];
-  const level1 = units.filter((u) => u.status === "level1");
-  const onscene = units.filter((u) => u.status === "onscene");
-  const enroute = units.filter((u) => u.status === "enroute");
-
+function renderTabButton(key, label, activeTab) {
   return `
-    <div class="helper-text">
-      Print/PDF will include the canvas plus a quick snapshot of command, unit status, and notes.
-    </div>
-
-    <div class="print-card">
-      <div class="print-title">${escapeHtml(battalionText)} – Tactical Print Snapshot</div>
-
-      <div class="print-grid">
-        <div class="print-block">
-          <div class="field-label">Command</div>
-          <div>${escapeHtml(state.tactical.command.icName || "Command")}</div>
-        </div>
-
-        <div class="print-block">
-          <div class="field-label">IC Unit</div>
-          <div>${escapeHtml(state.tactical.command.currentIcUnitId || "—")}</div>
-        </div>
-
-        <div class="print-block">
-          <div class="field-label">Level 1 Units</div>
-          <div>${level1.length ? level1.map((u) => escapeHtml(u.label)).join(", ") : "None"}</div>
-        </div>
-
-        <div class="print-block">
-          <div class="field-label">On Scene Units</div>
-          <div>${onscene.length ? onscene.map((u) => escapeHtml(u.label)).join(", ") : "None"}</div>
-        </div>
-
-        <div class="print-block">
-          <div class="field-label">Enroute Units</div>
-          <div>${enroute.length ? enroute.map((u) => escapeHtml(u.label)).join(", ") : "None"}</div>
-        </div>
-      </div>
-
-      <div class="print-block" style="margin-top:12px;">
-        <div class="field-label">Notes</div>
-        <div style="white-space:pre-wrap;">${escapeHtml(state.tactical.notes || "")}</div>
-      </div>
-    </div>
-
-    <button class="nav-btn nav-btn-primary" id="printNowBtn" style="margin-top:10px;">
-      Print / PDF
+    <button class="bottom-tab ${activeTab === key ? "active" : ""}" data-tab="${key}">
+      ${label}
     </button>
   `;
 }
 
-// ---------------- Modal: Assignment Builder ----------------
-
-function openUnitModal(unitId) {
-  const state = getState();
-  const unit = (state.tactical.units || []).find((u) => u.id === unitId);
-  if (!unit) return;
-
-  const modalRoot = document.getElementById("modalRoot");
-  if (!modalRoot) return;
-
+function renderAssignModal(unit) {
   const a = unit.assignment || { task: "", locations: [], objectives: [], notes: "" };
 
-  modalRoot.innerHTML = `
-    <div class="modal-backdrop" data-modal-close="1">
-      <div class="modal" role="dialog" aria-modal="true">
+  return `
+    <div class="modal-backdrop" id="assignBackdrop">
+      <div class="modal">
         <div class="modal-header">
           <div>
-            <div class="modal-title">${escapeHtml(unit.label)}</div>
-            <div class="modal-sub">Set status + assignment</div>
+            <div class="modal-title">Assign Unit</div>
+            <div class="modal-sub">${escapeHtml(unit.label)} — ${formatStatus(unit.status)}</div>
           </div>
-          <button class="modal-x" data-modal-close="1">✕</button>
+          <button class="modal-x" id="assignCloseBtn">✕</button>
         </div>
 
         <div class="modal-body">
-          <div class="modal-section">
-            <div class="field-label">Status</div>
-            <div class="status-row">
-              ${statusBtnHtml("enroute", unit.status)}
-              ${statusBtnHtml("level1", unit.status)}
-              ${statusBtnHtml("onscene", unit.status)}
+          <div class="field-group">
+            <label class="field-label">Status</label>
+            <div class="grid small">
+              ${["enroute","level1","assigned"].map(s => `
+                <button type="button"
+                  class="choice small assign-status ${unit.status === s ? "selected" : ""}"
+                  data-assign-status="${s}">
+                  ${formatStatus(s)}
+                </button>
+              `).join("")}
             </div>
           </div>
 
-          <div class="modal-section">
-            <div class="field-label">Task (single)</div>
+          <div class="field-group">
+            <label class="field-label">Task</label>
             <div class="grid">
-              ${TASKS.map((t) => `
-                <button type="button" class="choice ${a.task === t ? "selected" : ""}"
-                  data-assign-task="${escapeAttr(t)}">
-                  ${escapeHtml(t)}
-                </button>
+              ${TASKS.map(t => `
+                <button type="button"
+                  class="choice assign-task ${a.task === t ? "selected" : ""}"
+                  data-assign-task="${escapeAttr(t)}">${escapeHtml(t)}</button>
               `).join("")}
             </div>
           </div>
 
-          <div class="modal-section">
-            <div class="field-label">Locations (multi)</div>
-            <div class="grid small">
-              ${LOCATIONS.map((l) => `
-                <button type="button" class="choice small ${Array.isArray(a.locations) && a.locations.includes(l) ? "selected" : ""}"
-                  data-assign-loc="${escapeAttr(l)}">
-                  ${escapeHtml(l)}
-                </button>
+          <div class="field-group">
+            <label class="field-label">Locations (multi)</label>
+            <div class="grid">
+              ${LOCATIONS.map(l => `
+                <button type="button"
+                  class="choice assign-loc ${Array.isArray(a.locations) && a.locations.includes(l) ? "selected" : ""}"
+                  data-assign-loc="${escapeAttr(l)}">${escapeHtml(l)}</button>
               `).join("")}
             </div>
           </div>
 
-          <div class="modal-section">
-            <div class="field-label">Objectives (multi)</div>
-            <div class="grid small">
-              ${OBJECTIVES.map((o) => `
-                <button type="button" class="choice small ${Array.isArray(a.objectives) && a.objectives.includes(o) ? "selected" : ""}"
-                  data-assign-obj="${escapeAttr(o)}">
-                  ${escapeHtml(o)}
-                </button>
+          <div class="field-group">
+            <label class="field-label">Objectives (multi)</label>
+            <div class="grid">
+              ${OBJECTIVES.map(o => `
+                <button type="button"
+                  class="choice assign-obj ${Array.isArray(a.objectives) && a.objectives.includes(o) ? "selected" : ""}"
+                  data-assign-obj="${escapeAttr(o)}">${escapeHtml(o)}</button>
               `).join("")}
             </div>
           </div>
 
-          <div class="modal-section">
-            <div class="field-label">Assignment Notes (optional)</div>
-            <textarea id="assignNotes" class="field-input" rows="2"
-              placeholder="Short notes for this assignment…"
-            >${escapeHtml(a.notes || "")}</textarea>
+          <div class="field-group">
+            <label class="field-label">Notes</label>
+            <textarea id="assign_notes" class="field-input" rows="2"
+              placeholder="Short notes...">${escapeHtml(a.notes || "")}</textarea>
           </div>
         </div>
 
         <div class="modal-footer">
-          <button class="nav-btn" id="clearAssignBtn">Clear Assignment</button>
-          <button class="nav-btn" data-modal-close="1">Cancel</button>
-          <button class="nav-btn nav-btn-primary" id="saveAssignBtn">Save</button>
+          <button class="nav-btn" id="assignClearBtn">Clear Assignment</button>
+          <button class="nav-btn nav-btn-primary" id="assignSaveBtn">Save</button>
         </div>
       </div>
     </div>
   `;
+}
 
-  // Close handlers
-  modalRoot.querySelectorAll("[data-modal-close]").forEach((el) => {
-    el.addEventListener("click", (e) => {
-      // click outside modal closes
-      if (e.target === el || el.dataset.modalClose === "1") {
-        closeModal();
-      }
-    });
-  });
+export function attachHandlersC() {
+  // Canvas init AFTER DOM exists
+  initCanvas("tacticalCanvas");
 
-  // Status buttons
-  modalRoot.querySelectorAll("[data-status-set]").forEach((btn) => {
+  // Back / Print
+  const backBtn = document.getElementById("backToIrrBtn");
+  if (backBtn) backBtn.addEventListener("click", () => setScreen("irr"));
+
+  const printBtn = document.getElementById("printBtn");
+  if (printBtn) printBtn.addEventListener("click", () => window.print());
+
+  // Canvas clear
+  const canvasClearBtn = document.getElementById("canvasClearBtn");
+  if (canvasClearBtn) canvasClearBtn.addEventListener("click", () => clearCanvas("tacticalCanvas"));
+
+  // Bottom tabs
+  document.querySelectorAll("[data-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const s = btn.dataset.statusSet;
-      if (!s) return;
-      setUnitStatus(unitId, s);
+      const tab = btn.dataset.tab;
+      if (tab) setActiveTab(tab);
     });
   });
 
-  // Task (single)
-  modalRoot.querySelectorAll("[data-assign-task]").forEach((btn) => {
+  // Open unit modal
+  document.querySelectorAll("[data-unit-open]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const t = btn.dataset.assignTask;
-      if (!t) return;
-      setUnitAssignment(unitId, { task: t });
+      const id = btn.dataset.unitOpen;
+      if (id) setActiveUnit(id);
     });
   });
 
-  // Locations (multi)
-  modalRoot.querySelectorAll("[data-assign-loc]").forEach((btn) => {
+  // If modal exists, wire it
+  const backdrop = document.getElementById("assignBackdrop");
+  if (backdrop) {
+    const close = () => setActiveUnit("");
+
+    const closeBtn = document.getElementById("assignCloseBtn");
+    if (closeBtn) closeBtn.addEventListener("click", close);
+
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) close();
+    });
+
+    // Status select
+    document.querySelectorAll("[data-assign-status]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const unitId = getState().tactical.activeUnitId;
+        const s = btn.dataset.assignStatus;
+        if (unitId && s) setUnitStatus(unitId, s);
+      });
+    });
+
+    // Task select
+    document.querySelectorAll("[data-assign-task]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const unitId = getState().tactical.activeUnitId;
+        const t = btn.dataset.assignTask;
+        if (unitId) setUnitAssignment(unitId, { task: t || "" });
+      });
+    });
+
+    // Location toggle
+    document.querySelectorAll("[data-assign-loc]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const s = getState();
+        const unitId = s.tactical.activeUnitId;
+        if (!unitId) return;
+
+        const unit = (s.tactical.units || []).find((u) => u.id === unitId);
+        const loc = btn.dataset.assignLoc;
+        if (!unit || !loc) return;
+
+        const cur = Array.isArray(unit.assignment?.locations) ? unit.assignment.locations : [];
+        const next = cur.includes(loc) ? cur.filter((x) => x !== loc) : [...cur, loc];
+
+        setUnitAssignment(unitId, { locations: next });
+      });
+    });
+
+    // Objective toggle
+    document.querySelectorAll("[data-assign-obj]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const s = getState();
+        const unitId = s.tactical.activeUnitId;
+        if (!unitId) return;
+
+        const unit = (s.tactical.units || []).find((u) => u.id === unitId);
+        const obj = btn.dataset.assignObj;
+        if (!unit || !obj) return;
+
+        const cur = Array.isArray(unit.assignment?.objectives) ? unit.assignment.objectives : [];
+        const next = cur.includes(obj) ? cur.filter((x) => x !== obj) : [...cur, obj];
+
+        setUnitAssignment(unitId, { objectives: next });
+      });
+    });
+
+    // Notes
+    const notes = document.getElementById("assign_notes");
+    if (notes) {
+      notes.addEventListener("input", () => {
+        const unitId = getState().tactical.activeUnitId;
+        if (unitId) setUnitAssignment(unitId, { notes: notes.value });
+      });
+    }
+
+    // Clear assignment
+    const clearBtn = document.getElementById("assignClearBtn");
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        const unitId = getState().tactical.activeUnitId;
+        if (!unitId) return;
+        clearUnitAssignment(unitId);
+        updateTacticalSummary();
+      });
+    }
+
+    // Save assignment
+    const saveBtn = document.getElementById("assignSaveBtn");
+    if (saveBtn) {
+      saveBtn.addEventListener("click", () => {
+        const s = getState();
+        const unitId = s.tactical.activeUnitId;
+        if (!unitId) return;
+
+        // If assignment given, set status to Assigned (unless user forced otherwise)
+        const unit = (s.tactical.units || []).find((u) => u.id === unitId);
+        const a = unit?.assignment || {};
+        const hasAssign = !!(a.task || (a.locations && a.locations.length) || (a.objectives && a.objectives.length) || a.notes);
+
+        if (hasAssign && unit?.status !== "enroute") {
+          setUnitStatus(unitId, "assigned");
+        }
+        updateTacticalSummary();
+        setActiveUnit("");
+      });
+    }
+  }
+
+  // Benchmarks tab buttons
+  document.querySelectorAll(".benchmark-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const l = btn.dataset.assignLoc;
-      if (!l) return;
-      const cur = getState();
-      const u = (cur.tactical.units || []).find((x) => x.id === unitId);
-      const a2 = (u && u.assignment) || { task: "", locations: [], objectives: [], notes: "" };
-      const arr = Array.isArray(a2.locations) ? a2.locations.slice() : [];
-      const next = arr.includes(l) ? arr.filter((x) => x !== l) : [...arr, l];
-      setUnitAssignment(unitId, { locations: next });
+      const id = btn.dataset.benchmarkId;
+      const label = btn.dataset.benchmarkLabel;
+      if (!id || !label) return;
+
+      const s = getState();
+      const already = (s.tactical.benchmarks || []).some((b) => b.id === id);
+      if (!already) addBenchmark(id, label, []);
+      updateTacticalSummary();
     });
   });
 
-  // Objectives (multi)
-  modalRoot.querySelectorAll("[data-assign-obj]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const o = btn.dataset.assignObj;
-      if (!o) return;
-      const cur = getState();
-      const u = (cur.tactical.units || []).find((x) => x.id === unitId);
-      const a2 = (u && u.assignment) || { task: "", locations: [], objectives: [], notes: "" };
-      const arr = Array.isArray(a2.objectives) ? a2.objectives.slice() : [];
-      const next = arr.includes(o) ? arr.filter((x) => x !== o) : [...arr, o];
-      setUnitAssignment(unitId, { objectives: next });
+  // Follow-up inputs
+  const followUpFields = ["r360","safety","confirmStrategy","confirmNotes","resourceDetermination","additional"];
+  followUpFields.forEach((field) => {
+    const el = document.getElementById(`followup_${field}`);
+    if (!el) return;
+    const evt = el.tagName === "SELECT" ? "change" : "input";
+    el.addEventListener(evt, () => {
+      setFollowUpField(field, el.value);
+      updateTacticalSummary();
     });
   });
 
-  // Clear assignment
-  const clearBtn = document.getElementById("clearAssignBtn");
-  if (clearBtn) clearBtn.addEventListener("click", () => clearUnitAssignment(unitId));
+  // Command inputs
+  const incidentName = document.getElementById("cmd_incidentName");
+  if (incidentName) incidentName.addEventListener("input", () => setCommandField("incidentName", incidentName.value));
 
-  // Save (also saves notes)
-  const saveBtn = document.getElementById("saveAssignBtn");
-  if (saveBtn) {
-    saveBtn.addEventListener("click", () => {
-      const notes = document.getElementById("assignNotes");
-      setUnitAssignment(unitId, { notes: notes ? notes.value : "" });
-      closeModal();
-      snapshotToState(); // keep print current
+  const icUnit = document.getElementById("cmd_icUnit");
+  if (icUnit) icUnit.addEventListener("change", () => setCommandField("currentIcUnitId", icUnit.value));
+
+  const icName = document.getElementById("cmd_icName");
+  if (icName) icName.addEventListener("input", () => setCommandField("icName", icName.value));
+
+  // Transfer inputs
+  const xferTo = document.getElementById("xfer_to");
+  if (xferTo) xferTo.addEventListener("change", () => setCommandField("transferTo", xferTo.value));
+
+  const canC = document.getElementById("xfer_canC");
+  if (canC) canC.addEventListener("input", () => setCommandField("canConditions", canC.value));
+
+  const canA = document.getElementById("xfer_canA");
+  if (canA) canA.addEventListener("input", () => setCommandField("canActions", canA.value));
+
+  const canN = document.getElementById("xfer_canN");
+  if (canN) canN.addEventListener("input", () => setCommandField("canNeeds", canN.value));
+
+  // Build summary once
+  updateTacticalSummary();
+}
+
+function updateTacticalSummary() {
+  const s = getState();
+  const { tactical, incident } = s;
+
+  const battalionArr = Array.isArray(incident.battalion) ? incident.battalion : [];
+  const battalionText = battalionArr[0] || "BC";
+
+  const lines = [];
+  lines.push(`${battalionText}: tactical update.`);
+  lines.push("");
+
+  // Incident name / command
+  const cmdName = (tactical.command.icName || tactical.command.incidentName || "").trim();
+  if (cmdName) {
+    lines.push(`Incident: ${cmdName}.`);
+    lines.push("");
+  }
+
+  // Unit assignments summary
+  const assigned = (tactical.units || []).filter((u) => u.status === "assigned");
+  if (assigned.length) {
+    lines.push("Assignments:");
+    assigned.forEach((u) => {
+      const a = u.assignment || {};
+      const task = a.task ? a.task : "Task";
+      const loc = (a.locations || []).length ? ` on ${a.locations.join(", ")}` : "";
+      const obj = (a.objectives || []).length ? ` for ${a.objectives.join(", ")}` : "";
+      lines.push(`- ${u.label}: ${task}${loc}${obj}.`);
+    });
+    lines.push("");
+  }
+
+  // Transfer CAN (if present)
+  const c = tactical.command || {};
+  if (c.transferTo || c.canConditions || c.canActions || c.canNeeds) {
+    lines.push("Transfer / CAN:");
+    if (c.transferTo) lines.push(`- Transfer to: ${c.transferTo}.`);
+    if (c.canConditions) lines.push(`- C: ${c.canConditions}.`);
+    if (c.canActions) lines.push(`- A: ${c.canActions}.`);
+    if (c.canNeeds) lines.push(`- N: ${c.canNeeds}.`);
+    lines.push("");
+  }
+
+  // Follow-up
+  const f = tactical.followUp || {};
+  if (f.r360) lines.push(`360: ${f.r360}.`);
+  if (f.safety) lines.push(`Safety: ${f.safety}.`);
+  if (f.confirmStrategy) lines.push(`Strategy: ${f.confirmStrategy}.`);
+  if (f.confirmNotes) lines.push(`Notes: ${f.confirmNotes}.`);
+  if (f.resourceDetermination) lines.push(`Resources: ${f.resourceDetermination}.`);
+  if (f.additional) lines.push(`Additional: ${f.additional}.`);
+  if (lines[lines.length - 1] !== "") lines.push("");
+
+  // Benchmarks
+  if ((tactical.benchmarks || []).length) {
+    lines.push("Benchmarks:");
+    tactical.benchmarks.forEach((b) => {
+      lines.push(`- ${b.label} at ${formatTime(b.completedAt)}.`);
     });
   }
 
-  // ESC closes
-  window.addEventListener("keydown", escCloseOnce);
-}
+  const text = lines.join("\n").trim();
 
-function escCloseOnce(e) {
-  if (e.key === "Escape") {
-    closeModal();
-  }
-}
+  const outEl = document.getElementById("tacticalOutputBox");
+  if (outEl) outEl.textContent = text;
 
-function closeModal() {
-  const modalRoot = document.getElementById("modalRoot");
-  if (modalRoot) modalRoot.innerHTML = "";
-  window.removeEventListener("keydown", escCloseOnce);
-}
-
-function statusBtnHtml(status, current) {
-  const label = formatStatus(status);
-  const sel = status === current ? "selected" : "";
-  return `<button type="button" class="choice small ${sel}" data-status-set="${status}">${label}</button>`;
-}
-
-// ---------------- Helpers ----------------
-
-function battalionDisplay(code) {
-  const c = (code || "").trim();
-  if (c === "BC1") return "Battalion 1";
-  if (c === "BC2") return "Battalion 2";
-  return "";
-}
-
-function formatStatus(status) {
-  if (status === "enroute") return "Enroute";
-  if (status === "level1") return "Level 1";
-  if (status === "onscene") return "On Scene";
-  return "Enroute";
-}
-
-function assignmentSummary(a) {
-  if (!a) return "";
-  const t = (a.task || "").trim();
-  const loc = Array.isArray(a.locations) && a.locations.length ? a.locations.join(", ") : "";
-  const obj = Array.isArray(a.objectives) && a.objectives.length ? a.objectives.join(", ") : "";
-  const parts = [t, loc, obj].filter(Boolean);
-  return parts.join(" | ");
+  setFollowUpGeneratedText(text);
 }
 
 function renderBenchmarkButton(id, label, completedIds) {
@@ -639,11 +700,19 @@ function renderBenchmarkButton(id, label, completedIds) {
   return `
     <button type="button"
       class="benchmark-btn ${isCompleted ? "completed" : ""}"
-      data-benchmark-id="${escapeAttr(id)}"
-      data-benchmark-label="${escapeAttr(label)}">
-      ${escapeHtml(label)}
+      data-benchmark-id="${id}"
+      data-benchmark-label="${label}">
+      ${label}
     </button>
   `;
+}
+
+function formatStatus(status) {
+  if (!status) return "Enroute";
+  if (status === "enroute") return "Enroute";
+  if (status === "level1") return "Level 1";
+  if (status === "assigned") return "Assigned";
+  return "Enroute";
 }
 
 function formatTime(iso) {
@@ -655,6 +724,7 @@ function formatTime(iso) {
   return `${hh}:${mm}`;
 }
 
+/* ---------- tiny safe escaping helpers ---------- */
 function escapeHtml(s) {
   return String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -663,6 +733,4 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
-function escapeAttr(s) {
-  return escapeHtml(s);
-}
+function escapeAttr(s) { return escapeHtml(s); }
