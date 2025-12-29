@@ -15,7 +15,8 @@
   --wmSize: 820px;
 }
 
-*{box-sizing:border-box}
+*{ box-sizing:border-box; }
+
 body{
   margin:0;
   font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
@@ -36,7 +37,78 @@ body::before{
   z-index: 0;
 }
 
-/* Cards etc. */
+/* Main App Root */
+#app{
+  max-width:1100px;
+  margin:0 auto;
+  padding:16px;
+}
+
+/* App shell layout */
+.app-shell{
+  position:relative;
+  z-index:1;
+  padding:12px;
+}
+
+.top-bar{
+  padding:14px 16px;
+  background: rgba(17,31,66,.90);
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  border-radius:12px 12px 0 0;
+}
+
+.app-title{
+  font-size:16px;
+  font-weight:700;
+}
+
+.app-subtitle{
+  font-size:12px;
+  color:rgba(233,238,252,.75);
+  margin-top:2px;
+}
+
+.screen-tabs{
+  display:flex;
+  gap:8px;
+  margin:8px 0 12px 0;
+}
+
+.screen-tab{
+  flex:1;
+  padding:8px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(15,23,42,.7);
+  color:#e9eefc;
+  font-size:13px;
+  cursor:pointer;
+}
+
+.screen-tab.active{
+  background:#2563eb;
+  border-color:#2563eb;
+}
+
+.screen-container{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.screen-title{
+  margin:0 0 4px 0;
+  font-size:18px;
+}
+
+.screen-desc{
+  margin:0 0 12px 0;
+  font-size:13px;
+  color:rgba(233,238,252,.8);
+}
+
+/* Cards */
 .card{
   background: rgba(18,26,43,.75);
   border: 1px solid rgba(255,255,255,.10);
@@ -44,6 +116,7 @@ body::before{
   padding:12px;
 }
 
+/* Optional “block” style (if you still use it anywhere) */
 .block{
   border-radius:16px;
   padding:12px;
@@ -58,52 +131,12 @@ body::before{
   color:var(--text);
 }
 
-/* Same button style as original app */
-.grid{
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:10px;
-}
-@media (max-width: 900px){
-  .grid{grid-template-columns:repeat(3,minmax(0,1fr));}
-}
-@media (max-width: 600px){
-  .grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+/* Generic helpers */
+.helper-text{
+  font-size:12px;
+  color:rgba(233,238,252,.75);
 }
 
-button.choice{
-  border:1px solid rgba(0,0,0,.10);
-  background:#ffffff;
-  color:var(--text);
-  padding:12px 10px;
-  border-radius:12px;
-  font-size:15px;
-  font-weight:800;
-  cursor:pointer;
-  user-select:none;
-  touch-action:manipulation;
-  box-shadow:0 6px 16px rgba(0,0,0,.12);
-}
-button.choice.selected{
-  border-color:var(--blue);
-  background:var(--blue);
-  color:#ffffff;
-  box-shadow:0 10px 22px rgba(37,99,235,.22);
-}
-
-.output{
-  white-space:pre-wrap;
-  font-size:16px;
-  line-height:1.35;
-  background: rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:14px;
-  padding:12px;
-  min-height:170px;
-  color:#e9eefc;
-}
-
-/* Generic helpers you’re already using */
 .field-label{
   font-size:12px;
   font-weight:700;
@@ -122,90 +155,20 @@ button.choice.selected{
   box-shadow:0 6px 16px rgba(0,0,0,.10);
 }
 
-.helper-text{
-  font-size:12px;
-  color:rgba(233,238,252,.75);
-}
-
-/* IRR layout */
-.irr-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-}
-@media (max-width:900px){
-  .irr-grid{grid-template-columns:1fr;}
-}
-.irr-col{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.pill-row{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-}
-
-/* App shell layout */
-.app-shell{
-  position:relative;
-  z-index:1;
-  padding:12px;
-}
-
-.top-bar{
-  padding:14px 16px;
-  background: rgba(17,31,66,.90);
-  border-bottom: 1px solid rgba(255,255,255,.12);
-  border-radius:12px 12px 0 0;
-}
-.app-title{
+/* Output */
+.output{
+  white-space:pre-wrap;
   font-size:16px;
-  font-weight:700;
-}
-.app-subtitle{
-  font-size:12px;
-  color:rgba(233,238,252,.75);
-  margin-top:2px;
-}
-
-.screen-tabs{
-  display:flex;
-  gap:8px;
-  margin:8px 0 12px 0;
-}
-.screen-tab{
-  flex:1;
-  padding:8px 10px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,.18);
-  background:rgba(15,23,42,.7);
+  line-height:1.35;
+  background: rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;
+  padding:12px;
+  min-height:170px;
   color:#e9eefc;
-  font-size:13px;
-  cursor:pointer;
-}
-.screen-tab.active{
-  background:#2563eb;
-  border-color:#2563eb;
 }
 
-.screen-container{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-
-.screen-title{
-  margin:0 0 4px 0;
-  font-size:18px;
-}
-.screen-desc{
-  margin:0 0 12px 0;
-  font-size:13px;
-  color:rgba(233,238,252,.8);
-}
-
+/* Footer buttons */
 .screen-footer{
   display:flex;
   justify-content:space-between;
@@ -224,303 +187,193 @@ button.choice.selected{
   color:#e9eefc;
   cursor:pointer;
 }
+
 .nav-btn-primary{
   background:rgba(37,99,235,.9);
   border-color:#2563eb;
 }
+
 .nav-btn:disabled{
   opacity:0.4;
   cursor:not-allowed;
 }
 
-/* Base Layout */
-*{
-  box-sizing:border-box;
+/* =========================================================
+   BUTTONS: "choice" buttons (used by your Tactical/IRR screens)
+   ========================================================= */
+button.choice{
+  border:1px solid rgba(0,0,0,.10);
+  background:#ffffff;
+  color:var(--text);
+  padding:12px 10px;
+  border-radius:12px;
+  font-size:15px;
+  font-weight:800;
+  cursor:pointer;
+  user-select:none;
+  touch-action:manipulation;
+  box-shadow:0 6px 16px rgba(0,0,0,.12);
 }
 
-body{
-  margin:0;
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-  background:#0b1a3a;
-  color:#e9eefc;
+button.choice.selected{
+  border-color:var(--blue);
+  background:var(--blue);
+  color:#ffffff;
+  box-shadow:0 10px 22px rgba(37,99,235,.22);
 }
 
-/* Main App Root */
-#app{
-  max-width:1100px;
-  margin:0 auto;
-  padding:16px;
-}
+/* =========================================================
+   GRIDS
+   ========================================================= */
 
-/* Section Cards */
-.card{
-  background:rgba(18,26,43,.85);
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:16px;
-  padding:14px;
-  margin-bottom:14px;
-}
-
-/* Titles */
-h1{
-  margin:0 0 10px 0;
-  font-size:18px;
-}
-
-h2{
-  margin:8px 0 10px;
-  font-size:14px;
-  letter-spacing:.5px;
-  text-transform:uppercase;
-  color:#c7d2fe;
-}
-
-/* Labels */
-label{
-  font-size:12px;
-  color:#a7b2d6;
-  margin-bottom:4px;
-  display:block;
-}
-
-/* Buttons */
+/* Generic grid (if still used anywhere) */
 .grid{
   display:grid;
   grid-template-columns:repeat(4,minmax(0,1fr));
   gap:10px;
 }
-
-button.choice{
-  border:1px solid rgba(255,255,255,.14);
-  border-radius:12px;
-  padding:10px;
-  background:white;
-  color:#0b1220;
-  font-weight:800;
-  cursor:pointer;
+@media (max-width: 900px){
+  .grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+}
+@media (max-width: 600px){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
 
-button.choice.selected{
-  background:#2563eb;
-  color:white;
+/* Pill rows (used by IRR) */
+.pill-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
 }
 
-/* Dropdowns */
-select{
-  width:100%;
-  padding:10px;
-  border-radius:10px;
-  border:1px solid rgba(255,255,255,.15);
-  font-weight:700;
-}
-
-/* Text Inputs */
-input[type="text"]{
-  width:100%;
-  padding:10px;
-  border-radius:10px;
-  border:1px solid rgba(255,255,255,.15);
-  font-size:15px;
-}
-
-/* Output Panels */
-.output{
-  background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:14px;
-  padding:12px;
-  white-space:pre-wrap;
-  min-height:120px;
-  color:white;
-}
-
-/* Rows */
-.row{
+/* IRR layout */
+.irr-grid{
   display:grid;
   grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+@media (max-width:900px){
+  .irr-grid{grid-template-columns:1fr;}
+}
+.irr-col{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+/* =========================================================
+   SCREEN A: Fire Incident – fixed rows for units
+   (matches app.js: .unit-grid.unit-grid-fixed > .unit-grid-row)
+   ========================================================= */
+.unit-grid-fixed{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.unit-grid-row{
+  display:flex;
+  flex-wrap:wrap;
   gap:10px;
 }
 
-/* Primary Buttons */
-.btn{
+/* Optional: keep row buttons consistently wide for smart board taps */
+.unit-grid-row .choice{
+  min-width:120px;
+}
+
+/* =========================================================
+   OPTIONAL: if you still use the old "incident-setup" component
+   (kept here but won't conflict with the new Screen A)
+   ========================================================= */
+.incident-setup{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  padding:16px;
+}
+
+.incident-setup-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.incident-setup-title{
+  font-size:18px;
+  font-weight:800;
+}
+
+.incident-setup-subtitle{
+  font-size:12px;
+  opacity:0.8;
+}
+
+.setup-section{
+  background: rgba(18,26,43,.75);
   border-radius:14px;
-  padding:10px;
-  border:1px solid rgba(255,255,255,.2);
-  background:rgba(255,255,255,.1);
-  color:white;
-  font-weight:900;
+  padding:12px;
+  border:1px solid rgba(255,255,255,.12);
+}
+
+.setup-section-label{
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  margin-bottom:8px;
+  opacity:.85;
+}
+
+/* Pills (if you still use them anywhere) */
+.pill{
+  border-radius:999px;
+  padding:8px 14px;
+  border:1px solid rgba(255,255,255,.24);
+  background: rgba(15,23,42,.75);
+  color:#e5e7eb;
+  font-size:14px;
+  font-weight:600;
   cursor:pointer;
-}
-/* --- INCIDENT SETUP LAYOUT --- */
-
-.incident-setup {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 16px;
+  outline:none;
 }
 
-.incident-setup-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.pill:hover{
+  border-color:#60a5fa;
 }
 
-.incident-setup-title {
-  font-size: 18px;
-  font-weight: 800;
+.pill.is-selected{
+  background:#2563eb;
+  border-color:#93c5fd;
+  color:#ffffff;
+  box-shadow:0 0 0 2px rgba(37,99,235,.35);
 }
 
-.incident-setup-subtitle {
-  font-size: 12px;
-  opacity: 0.8;
+.unit-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));
+  gap:8px;
 }
 
-/* Section blocks (Battalion, Call Type, Units) */
-.setup-section {
-  background: rgba(18, 26, 43, 0.85);
-  border-radius: 14px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+.setup-footer{
+  display:flex;
+  justify-content:flex-end;
+  margin-top:8px;
 }
 
-.setup-section-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 8px;
-  opacity: 0.85;
-}
-
-/* PILL BUTTONS */
-
-.pill-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.pill {
-  border-radius: 999px;
-  padding: 8px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  background: rgba(15, 23, 42, 0.75);
-  color: #e5e7eb;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  outline: none;
-}
-
-.pill:hover {
-  border-color: #60a5fa;
-}
-
-.pill.is-selected {
-  background: #2563eb;
-  border-color: #93c5fd;
-  color: #ffffff;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35);
-}
-
-/* Units grid uses the same pill style */
-
-.unit-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 8px;
-}
-
-/* START INCIDENT BUTTON */
-
-.setup-footer {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
-}
-
-.start-incident-btn {
-  border-radius: 999px;
-  padding: 10px 18px;
-  border: 1px solid rgba(96, 165, 250, 0.9);
+.start-incident-btn{
+  border-radius:999px;
+  padding:10px 18px;
+  border:1px solid rgba(96,165,250,.9);
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  color: #f9fafb;
-  font-size: 14px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.4);
+  color:#f9fafb;
+  font-size:14px;
+  font-weight:800;
+  cursor:pointer;
+  box-shadow:0 10px 24px rgba(37,99,235,.4);
 }
 
-.start-incident-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-/* IRR layout */
-.irr-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-@media (max-width: 900px) {
-  .irr-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.irr-col {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.field-group {
-  margin-bottom: 10px;
-}
-
-.field-label {
-  font-size: 12px;
-  font-weight: 700;
-  margin-bottom: 6px;
-  color: rgba(15, 23, 42, 0.8);
-}
-
-.pill-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.pill-btn {
-  border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.15);
-  background: #ffffff;
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.pill-btn-selected {
-  background: #2563eb;
-  color: #ffffff;
-  border-color: #2563eb;
-}
-
-.field-input {
-  width: 100%;
-  border-radius: 10px;
-  border: 1px solid rgba(15, 23, 42, 0.18);
-  padding: 8px 10px;
-  font-size: 14px;
-}
-
-.output-box {
-  white-space: pre-wrap;
-  font-size: 15px;
-  background: rgba(15, 23, 42, 0.9);
-  color: #e5edff;
-  border-radius: 10px;
-  padding: 10px;
+.start-incident-btn:disabled{
+  opacity:0.4;
+  cursor:not-allowed;
+  box-shadow:none;
 }
