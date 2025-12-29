@@ -1,33 +1,43 @@
+// =========================
 // scripts/app.js
-// Main UI controller: routes to Screen A / B / C modules
-
+// =========================
 import { getState, subscribe, setScreen, syncTacticalUnitsFromIncident } from "./state.js";
-
 import { renderScreenA, attachHandlersA } from "./screens/screenA_incident.js";
 import { renderScreenB, attachHandlersB } from "./screens/screenB_irr.js";
 import { renderScreenC, attachHandlersC } from "./screens/screenC_tactical.js";
 
 let rootEl = null;
+let fatalError = null;
 
-export function initApp(mountId = "app") {
+/* Show errors on screen instead of “blank blue” */
+window.addEventListener("error", (e) => {
+  fatalError = e?.error?.stack || e?.message || String(e);
+  const s = getState();
+  render(s);
+});
+window.addEventListener("unhandledrejection", (e) => {
+  fatalError = e?.reason?.stack || e?.reason?.message || String(e?.reason);
+  const s = getState();
+  render(s);
+});
+
+export function initApp(mountId="app"){
   rootEl = document.getElementById(mountId);
-  if (!rootEl) {
+  if (!rootEl){
     console.error(`initApp: element #${mountId} not found`);
     return;
   }
-
   const state = getState();
   render(state);
   subscribe(render);
 }
 
-function render(state) {
+function render(state){
   if (!rootEl) return;
 
-  // If user is on Tactical screen, ensure tactical.units mirrors incident selected units
-  if (state.screen === "tactical") {
+  if (state.screen === "tactical"){
     syncTacticalUnitsFromIncident();
-    state = getState(); // refresh local copy after sync
+    state = getState();
   }
 
   rootEl.innerHTML = `
@@ -38,16 +48,17 @@ function render(state) {
       </header>
 
       <nav class="screen-tabs">
-        <button class="screen-tab ${state.screen === "incident" ? "active" : ""}" data-screen="incident">
-          A. Incident Setup
-        </button>
-        <button class="screen-tab ${state.screen === "irr" ? "active" : ""}" data-screen="irr">
-          B. IRR / IAP
-        </button>
-        <button class="screen-tab ${state.screen === "tactical" ? "active" : ""}" data-screen="tactical">
-          C. Tactical View
-        </button>
+        <button class="screen-tab ${state.screen==="incident"?"active":""}" data-screen="incident">A. Incident Setup</button>
+        <button class="screen-tab ${state.screen==="irr"?"active":""}" data-screen="irr">B. IRR / IAP</button>
+        <button class="screen-tab ${state.screen==="tactical"?"active":""}" data-screen="tactical">C. Tactical View</button>
       </nav>
+
+      ${fatalError ? `
+        <section class="fatal-error">
+          <b>App Error (shows why it looked blank)</b>
+          <pre>${escapeHtml(fatalError)}</pre>
+        </section>
+      ` : ""}
 
       <main class="screen-container">
         ${renderScreen(state)}
@@ -59,15 +70,15 @@ function render(state) {
   attachScreenHandlers(state);
 }
 
-function renderScreen(state) {
+function renderScreen(state){
   if (state.screen === "incident") return renderScreenA(state);
   if (state.screen === "irr") return renderScreenB(state);
   if (state.screen === "tactical") return renderScreenC(state);
   return `<section class="card">Unknown screen</section>`;
 }
 
-function attachGlobalHandlers() {
-  document.querySelectorAll(".screen-tab").forEach((btn) => {
+function attachGlobalHandlers(){
+  document.querySelectorAll(".screen-tab").forEach(btn => {
     btn.addEventListener("click", () => {
       const screen = btn.dataset.screen;
       if (screen) setScreen(screen);
@@ -75,8 +86,18 @@ function attachGlobalHandlers() {
   });
 }
 
-function attachScreenHandlers(state) {
+function attachScreenHandlers(state){
   if (state.screen === "incident") attachHandlersA(state);
   if (state.screen === "irr") attachHandlersB(state);
   if (state.screen === "tactical") attachHandlersC(state);
+}
+
+/* safe escape (no replaceAll) */
+function escapeHtml(s){
+  return String(s ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
 }
