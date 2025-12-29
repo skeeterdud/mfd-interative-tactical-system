@@ -22,7 +22,6 @@ export function initApp(mountId = "app") {
     return;
   }
 
-  // Initial render + subscribe to future changes
   const state = getState();
   render(state);
   subscribe(render);
@@ -71,7 +70,6 @@ function render(state) {
   attachScreenHandlers(state);
 }
 
-// Decide which screen to render
 function renderScreen(state) {
   if (state.screen === "incident") return renderIncidentScreen(state);
   if (state.screen === "irr") return renderIrrScreen(state);
@@ -93,7 +91,7 @@ function attachGlobalHandlers() {
 
 function renderIncidentScreen(state) {
   const { incident } = state;
-  const { callType, battalion, selectedUnitIds = [] } = incident;
+  const { callType, battalion, selectedUnitIds } = incident;
 
   const callTypes = ["Fire", "Accident", "Large Scale Event (EMS, RTF)"];
 
@@ -232,9 +230,9 @@ function attachIncidentHandlers(state) {
 
 function renderIrrScreen(state) {
   const { incident, irr } = state;
-  const { callType, battalion, selectedUnitIds = [] } = incident;
+  const { callType, battalion, selectedUnitIds } = incident;
 
-  const respondingUnits = selectedUnitIds
+  const respondingUnits = (Array.isArray(selectedUnitIds) ? selectedUnitIds : [])
     .map((id) => ALL_UNITS.find((u) => u.id === id))
     .filter(Boolean);
 
@@ -243,6 +241,7 @@ function renderIrrScreen(state) {
     Array.isArray(irr[field]) && irr[field].includes(value);
 
   const sizeupText = buildIrrText(state);
+  const battalionDisplayText = battalionDisplay(battalion) || battalion || "Not set";
 
   return `
     <section class="screen screen-irr">
@@ -256,7 +255,7 @@ function renderIrrScreen(state) {
         <h2 class="card-title">Incident Context</h2>
         <ul class="summary-list">
           <li><strong>Call Type:</strong> ${callType || "Not set"}</li>
-          <li><strong>Battalion:</strong> ${battalion || "Not set"}</li>
+          <li><strong>Battalion:</strong> ${battalionDisplayText}</li>
           <li><strong>Units Responding:</strong> ${
             respondingUnits.length
               ? respondingUnits.map((u) => u.label).join(", ")
@@ -290,6 +289,7 @@ function renderIrrScreen(state) {
         </div>
       </section>
 
+      <!-- IRR GRID: Building / Problem -->
       <section class="card irr-grid">
         <div class="irr-col">
           <h2 class="card-title">Building Description</h2>
@@ -301,7 +301,7 @@ function renderIrrScreen(state) {
                 .map(
                   (size) => `
                 <button
-                  class="choice irr-size-btn ${isSelected("buildingSize", size) ? "selected" : ""}"
+                  class="choice irr-single-btn ${isSelected("buildingSize", size) ? "selected" : ""}"
                   data-field="buildingSize"
                   data-value="${size}"
                 >
@@ -320,7 +320,7 @@ function renderIrrScreen(state) {
                 .map(
                   (h) => `
                 <button
-                  class="choice irr-height-btn ${isSelected("height", h) ? "selected" : ""}"
+                  class="choice irr-single-btn ${isSelected("height", h) ? "selected" : ""}"
                   data-field="height"
                   data-value="${h}"
                 >
@@ -345,9 +345,7 @@ function renderIrrScreen(state) {
                 .map(
                   (o) => `
                 <button
-                  class="choice irr-occ-btn ${
-                    isSelected("occupancy", o.value) ? "selected" : ""
-                  }"
+                  class="choice irr-single-btn ${isSelected("occupancy", o.value) ? "selected" : ""}"
                   data-field="occupancy"
                   data-value="${o.value}"
                 >
@@ -390,7 +388,7 @@ function renderIrrScreen(state) {
                 .map(
                   (c) => `
                 <button
-                  class="choice irr-cond-btn ${isSelected("conditions", c.value) ? "selected" : ""}"
+                  class="choice irr-single-btn ${isSelected("conditions", c.value) ? "selected" : ""}"
                   data-field="conditions"
                   data-value="${c.value}"
                 >
@@ -403,18 +401,15 @@ function renderIrrScreen(state) {
           </div>
 
           <div class="field-group">
-            <label class="field-label">Problem Sides</label>
+            <label class="field-label">Problem Sides (multi)</label>
             <div class="pill-row">
               ${["Alpha", "Bravo", "Charlie", "Delta"]
                 .map(
                   (side) => `
                 <button
-                  class="choice irr-side-btn ${
-                    Array.isArray(irr.problemSides) && irr.problemSides.includes(side) ? "selected" : ""
-                  }"
+                  class="choice irr-multi-btn ${isInArray("problemSides", side) ? "selected" : ""}"
                   data-field="problemSides"
                   data-value="${side}"
-                  data-multivalue="true"
                 >
                   ${side}
                 </button>
@@ -437,12 +432,13 @@ function renderIrrScreen(state) {
         </div>
       </section>
 
+      <!-- IRR GRID: IAP / Strategy -->
       <section class="card irr-grid">
         <div class="irr-col">
           <h2 class="card-title">Initial Action Plan</h2>
 
           <div class="field-group">
-            <label class="field-label">Tasks</label>
+            <label class="field-label">Tasks (multi)</label>
             <div class="pill-row">
               ${[
                 "Investigate",
@@ -455,12 +451,9 @@ function renderIrrScreen(state) {
                 .map(
                   (task) => `
                 <button
-                  class="choice irr-task-btn ${
-                    isInArray("iapTasks", task) ? "selected" : ""
-                  }"
+                  class="choice irr-multi-btn ${isInArray("iapTasks", task) ? "selected" : ""}"
                   data-field="iapTasks"
                   data-value="${task}"
-                  data-multivalue="true"
                 >
                   ${task}
                 </button>
@@ -471,31 +464,25 @@ function renderIrrScreen(state) {
           </div>
 
           <div class="field-group">
-            <label class="field-label">Location (multi)</label>
+            <label class="field-label">IAP Location (multi)</label>
             <div class="pill-row">
               ${[
                 { value: "1st Floor", label: "1st Floor" },
                 { value: "2nd Floor", label: "2nd Floor" },
                 { value: "3rd Floor", label: "3rd Floor" },
                 { value: "4th Floor", label: "4th Floor" },
-                { value: "Alpha",     label: "Alpha" },
-                { value: "Bravo",     label: "Bravo" },
-                { value: "Charlie",   label: "Charlie" },
-                { value: "Delta",     label: "Delta" },
-                { value: "other",     label: "Other" },
+                { value: "Alpha", label: "Alpha" },
+                { value: "Bravo", label: "Bravo" },
+                { value: "Charlie", label: "Charlie" },
+                { value: "Delta", label: "Delta" },
+                { value: "other", label: "Other" },
               ]
                 .map(
                   (loc) => `
                 <button
-                  class="choice irr-iaploc-btn ${
-                    Array.isArray(irr.iapLocations) &&
-                    irr.iapLocations.includes(loc.value)
-                      ? "selected"
-                      : ""
-                  }"
+                  class="choice irr-multi-btn ${isInArray("iapLocations", loc.value) ? "selected" : ""}"
                   data-field="iapLocations"
                   data-value="${loc.value}"
-                  data-multivalue="true"
                 >
                   ${loc.label}
                 </button>
@@ -505,8 +492,7 @@ function renderIrrScreen(state) {
             </div>
 
             ${
-              Array.isArray(irr.iapLocations) &&
-              irr.iapLocations.includes("other")
+              Array.isArray(irr.iapLocations) && irr.iapLocations.includes("other")
                 ? `
               <input
                 type="text"
@@ -521,18 +507,15 @@ function renderIrrScreen(state) {
           </div>
 
           <div class="field-group">
-            <label class="field-label">Objectives</label>
+            <label class="field-label">Objectives (multi)</label>
             <div class="pill-row">
               ${["Fire Attack", "Primary Search"]
                 .map(
                   (obj) => `
                 <button
-                  class="choice irr-obj-btn ${
-                    isInArray("iapObjectives", obj) ? "selected" : ""
-                  }"
+                  class="choice irr-multi-btn ${isInArray("iapObjectives", obj) ? "selected" : ""}"
                   data-field="iapObjectives"
                   data-value="${obj}"
-                  data-multivalue="true"
                 >
                   ${obj}
                 </button>
@@ -553,9 +536,7 @@ function renderIrrScreen(state) {
                 .map(
                   (s) => `
                 <button
-                  class="choice irr-strat-btn ${
-                    irr.strategy === s ? "selected" : ""
-                  }"
+                  class="choice irr-single-btn ${irr.strategy === s ? "selected" : ""}"
                   data-field="strategy"
                   data-value="${s}"
                 >
@@ -603,14 +584,10 @@ function renderIrrScreen(state) {
 function attachIrrHandlers() {
   // Back / Next
   const backBtn = document.getElementById("backToIncidentBtn");
-  if (backBtn) {
-    backBtn.addEventListener("click", () => setScreen("incident"));
-  }
+  if (backBtn) backBtn.addEventListener("click", () => setScreen("incident"));
 
   const nextBtn = document.getElementById("toTacticalBtn");
-  if (nextBtn) {
-    nextBtn.addEventListener("click", () => setScreen("tactical"));
-  }
+  if (nextBtn) nextBtn.addEventListener("click", () => setScreen("tactical"));
 
   // IRR unit selection
   document.querySelectorAll(".irr-unit-btn").forEach((btn) => {
@@ -620,32 +597,25 @@ function attachIrrHandlers() {
     });
   });
 
-  // Generic pill handler:
-  // - If a button has data-multivalue="true" -> toggleIrrArrayField(field, value)
-  // - Otherwise -> setIrrField(field, value)
-  document
-    .querySelectorAll(
-      ".choice[data-field][data-value]"
-    )
-    .forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const field = btn.dataset.field;
-        const value = btn.dataset.value;
-        const isMulti = btn.dataset.multivalue === "true";
-
-        if (!field) return;
-
-        if (isMulti) {
-          // toggle presence in array
-          toggleIrrArrayField(field, value);
-        } else {
-          // set single-value
-          setIrrField(field, value);
-        }
-      });
+  // SINGLE-value pills
+  document.querySelectorAll(".irr-single-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const field = btn.dataset.field;
+      const value = btn.dataset.value;
+      if (field) setIrrField(field, value);
     });
+  });
 
-  // Inputs: occupancyOther, problemLocationText, iapLocationOther, commandText
+  // MULTI-value pills
+  document.querySelectorAll(".irr-multi-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const field = btn.dataset.field;
+      const value = btn.dataset.value;
+      if (field && value) toggleIrrArrayField(field, value);
+    });
+  });
+
+  // Inputs
   const occOther = document.getElementById("irrOccupancyOther");
   if (occOther) {
     occOther.addEventListener("input", () => {
@@ -675,15 +645,88 @@ function attachIrrHandlers() {
   }
 }
 
-// Helper: build the IRR text using current state
+// --- SCREEN C: Tactical View (safe placeholder) ----------------------------
+// If you already have a Tactical View implementation elsewhere, replace these two.
+
+function renderTacticalScreen(state) {
+  return `
+    <section class="screen screen-tactical">
+      <h1 class="screen-title">Tactical View</h1>
+      <p class="screen-desc">
+        Tactical View placeholder (hook this up to your tactical builder).
+      </p>
+
+      <section class="card">
+        <h2 class="card-title">Coming Soon</h2>
+        <p class="helper-text">
+          Your IRR and incident selections are preserved in state. You can build out the tactical UI here.
+        </p>
+      </section>
+
+      <footer class="screen-footer">
+        <button class="nav-btn nav-btn-secondary" id="backToIrrBtn">
+          ◀ Back: IRR
+        </button>
+      </footer>
+    </section>
+  `;
+}
+
+function attachTacticalHandlers() {
+  const backBtn = document.getElementById("backToIrrBtn");
+  if (backBtn) backBtn.addEventListener("click", () => setScreen("irr"));
+}
+
+// --- HELPERS ---------------------------------------------------------------
+
+function battalionDisplay(code) {
+  const c = (code || "").trim();
+  if (c === "BC1") return "Battalion 1";
+  if (c === "BC2") return "Battalion 2";
+  return "";
+}
+
+function mapIapLocation(loc) {
+  if (!loc) return "";
+  const lower = String(loc).toLowerCase();
+
+  // Sides get "side"
+  if (["alpha", "bravo", "charlie", "delta"].includes(lower)) {
+    return `${lower} side`;
+  }
+
+  // Floors stay as-is
+  if (lower.includes("floor")) {
+    return lower; // "1st floor", "2nd floor"
+  }
+
+  // Fallback
+  return lower;
+}
+
+function normalizeCommandName(raw, unitLabel) {
+  let s = (raw || "").trim();
+
+  // If they leave it blank, default to "Trk 1 is now Command"
+  if (!s && unitLabel) return `${unitLabel} is now Command`;
+  if (!s) return "";
+
+  // If they already typed "Command" at the end, don't add it again
+  if (/command\.?$/i.test(s)) return s.replace(/\.*$/, "");
+
+  return `${s} Command`;
+}
+
+// --- IRR TEXT BUILDER (single, canonical) ---------------------------------
+
 function buildIrrText(state) {
   const { incident, irr } = state;
-  const { battalion } = incident;
+  const battalionText = battalionDisplay(incident.battalion);
 
   const irrUnit = ALL_UNITS.find((u) => u.id === irr.irrUnitId);
   const unitLabel = irrUnit ? irrUnit.label : "";
 
-  const size = irr.buildingSize ? irr.buildingSize.toLowerCase() : "";
+  const size = irr.buildingSize ? String(irr.buildingSize).toLowerCase() : "";
   const height = irr.height ? `${irr.height} story` : "";
 
   // Occupancy
@@ -712,21 +755,18 @@ function buildIrrText(state) {
 
   // Problem location (sides + free text)
   const sides = Array.isArray(irr.problemSides) ? irr.problemSides : [];
-  const sidesText = sides.map((s) => s.toLowerCase()).join(" / ");
+  const sidesText = sides.map((s) => String(s).toLowerCase()).join(" / ");
   const locFree = (irr.problemLocationText || "").trim();
 
   let probPhrase = "";
   if (locFree && sides.length) {
     // e.g., "alpha / bravo 2nd floor rear"
-    probPhrase = `${sidesText} ${locFree}`;
+    probPhrase = `${sidesText} ${locFree}`.trim();
   } else if (locFree && !sides.length) {
-    // e.g., "2nd floor rear storage"
     probPhrase = locFree;
   } else if (!locFree && sides.length === 1) {
-    // "alpha side"
     probPhrase = `${sidesText} side`;
   } else if (!locFree && sides.length > 1) {
-    // "alpha / bravo sides"
     probPhrase = `${sidesText} sides`;
   }
 
@@ -756,10 +796,8 @@ function buildIrrText(state) {
 
   const partsBuilding = [size, height, occ].filter(Boolean).join(" ");
 
-  // ---- Final lines --------------------------------------------------------
-
   const line1 =
-    `${battalion ? battalion + " " : ""}` +
+    `${battalionText ? battalionText + " " : ""}` +
     `${unitLabel ? "From " + unitLabel + ", " : ""}` +
     `we are on scene with a ${partsBuilding || "structure"}` +
     `${cond ? ", with " + cond : ""}` +
@@ -776,41 +814,6 @@ function buildIrrText(state) {
     `${cmdText ? ", " + cmdText : ""}.`;
 
   return [line1, "", line2, "", line3].join("\n");
-}
-
-function normalizeCommandName(raw, unitLabel) {
-  let s = (raw || "").trim();
-
-  // If they leave it blank, default to "Trk 1 is now Command"
-  if (!s && unitLabel) {
-    return `${unitLabel} is now Command`;
-  }
-  if (!s) return "";
-
-  // If they already typed "Command" at the end, don't add it again
-  if (/command\.?$/i.test(s)) {
-    return s.replace(/\.*$/, "");
-  }
-
-  return `${s} Command`;
-}
-
-function mapIapLocation(loc) {
-  if (!loc) return "";
-  const lower = String(loc).toLowerCase();
-
-  // Sides get "side"
-  if (["alpha", "bravo", "charlie", "delta"].includes(lower)) {
-    return `${lower} side`;
-  }
-
-  // Floors stay as-is
-  if (lower.includes("floor")) {
-    return lower; // "1st floor", "2nd floor"
-  }
-
-  // Fallback: just return the text
-  return lower;
 }
 
 // --- Per-Screen handler dispatcher -----------------------------------------
