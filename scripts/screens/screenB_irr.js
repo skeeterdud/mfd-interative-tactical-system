@@ -1,10 +1,13 @@
 // scripts/screens/screenB_irr.js
-// Screen B: matches Size Up Step 2 styling + adds "Select Unit Giving IRR"
+// Screen B matches Size Up Step 2 layout, with: tap-to-select IRR unit,
+// and incident name auto-filled from command name.
 
 import {
   setScreen,
   setIrrField,
   toggleIrrArrayField,
+  setIncidentField,
+  setCommandHolder,
   resetAll,
   ALL_UNITS,
 } from "../state.js";
@@ -76,12 +79,8 @@ const CONFIG = [
 
 export function renderScreenB(state) {
   const irr = state.irr || {};
-  const incident = state.incident || {};
-
-  const selectedIds = Array.isArray(incident.selectedUnitIds) ? incident.selectedUnitIds : [];
-  const selectedUnits = selectedIds
-    .map((id) => ALL_UNITS.find((u) => u.id === id))
-    .filter(Boolean);
+  const selectedIds = Array.isArray(state.incident.selectedUnitIds) ? state.incident.selectedUnitIds : [];
+  const selectedUnits = selectedIds.map(id => ALL_UNITS.find(u => u.id === id)).filter(Boolean);
 
   const sizeupText = buildIrrText(state);
 
@@ -89,41 +88,46 @@ export function renderScreenB(state) {
   const isInArray = (key, value) => Array.isArray(irr[key]) && irr[key].includes(value);
 
   return `
-    <!-- TOP: Select Unit Giving IRR (this is what you said you lost) -->
     <section class="card">
-      <div class="helper-text">Step 2 of 3 – IRR & IAP</div>
-      <h1 style="margin:6px 0 0 0;">Select Unit Giving IRR</h1>
-      <p class="helper-text">Tap one of the units you selected on Screen A.</p>
+      <div class="helper-text">Step 2 of 3 – Select Unit Giving IRR</div>
+      <h1 style="margin:6px 0 0 0;">IRR & Initial Action Plan</h1>
 
-      <div class="unit-grid" style="margin-top:10px;">
-        ${
-          selectedUnits.length
-            ? selectedUnits
-                .map(
-                  (u) => `
-            <button type="button"
-              class="choice irr-unit-btn ${irr.irrUnitId === u.id ? "selected" : ""}"
-              data-unit-id="${u.id}">
-              ${u.label}
-            </button>
-          `
-                )
-                .join("")
-            : `<div class="helper-text">No units selected on Screen A. Go back and select units.</div>`
-        }
+      <div class="block ops" style="margin-top:12px;">
+        <h2>Select Unit Giving IRR</h2>
+        <div class="unit-grid">
+          ${
+            selectedUnits.length
+              ? selectedUnits.map(u => `
+                <button type="button"
+                  class="choice irr-unit-btn ${irr.irrUnitId === u.id ? "selected" : ""}"
+                  data-unit-id="${u.id}">
+                  ${u.label}
+                </button>
+              `).join("")
+              : `<div class="helper-text">No units selected on Screen A.</div>`
+          }
+        </div>
+
+        <label class="field-label" style="font-weight:900;color:var(--text);">Command Name (Incident Name)</label>
+        <input type="text" class="field-input" id="irrCommandText"
+          placeholder="e.g., Main St Command  (or: Trk 1 is now Main St Command)"
+          value="${escapeHtml(irr.commandText || "")}"
+        />
+        <p class="helper-text" style="margin-top:8px;">
+          Incident Name auto-fills from this command name.
+        </p>
       </div>
     </section>
 
-    <!-- IRR + IAP layout (Size Up Step 2 style) -->
     <section class="card">
       <div class="irrWrap">
         <div class="irrTitle">IRR</div>
 
         <div class="block building">
           <h2>Building Description</h2>
-          ${renderButtonGroupHtml("buildingSize", irr, isSelected, isInArray)}
-          ${renderButtonGroupHtml("height", irr, isSelected, isInArray)}
-          ${renderButtonGroupHtml("occupancy", irr, isSelected, isInArray)}
+          ${renderButtonGroupHtml("buildingSize", irr, isSelected)}
+          ${renderButtonGroupHtml("height", irr, isSelected)}
+          ${renderButtonGroupHtml("occupancy", irr, isSelected)}
           ${
             irr.occupancy === "other"
               ? `
@@ -139,7 +143,7 @@ export function renderScreenB(state) {
 
         <div class="block problem">
           <h2>Problem Description</h2>
-          ${renderButtonGroupHtml("conditions", irr, isSelected, isInArray)}
+          ${renderButtonGroupHtml("conditions", irr, isSelected)}
           ${renderButtonGroupHtml("problemSides", irr, isSelected, isInArray)}
 
           <label class="field-label">Location of the Problem Area (quick)</label>
@@ -178,9 +182,7 @@ export function renderScreenB(state) {
       </div>
 
       <div class="block cmd">
-        <h2>Strategy / Command</h2>
-
-        <div style="margin:0 0 10px 0;"><b>Strategy</b></div>
+        <h2>Strategy</h2>
         <div class="grid">
           ${["Offensive","Defensive"].map((v) => `
             <button type="button"
@@ -188,22 +190,15 @@ export function renderScreenB(state) {
               data-strategy="${v}">${v}</button>
           `).join("")}
         </div>
-
-        <label class="field-label" style="font-weight:900;color:var(--text);">Command</label>
-        <input type="text" class="field-input" id="irrCommandText"
-          placeholder="e.g., Main Street Command"
-          value="${escapeHtml(irr.commandText || "")}"
-        />
       </div>
     </section>
 
     <section class="card">
-      <div class="helper-text"><b>Generated Size-Up</b></div>
+      <div class="helper-text"><b>Generated IRR</b></div>
       <pre class="output" id="irrOutputBox">${escapeHtml(sizeupText)}</pre>
 
       <footer class="screen-footer">
-        <button class="nav-btn" id="irrBackBtn">◀ Back: Incident</button>
-        <button class="nav-btn" id="irrStartOverBtn">Start Over</button>
+        <button class="nav-btn nav-btn-danger" id="irrStartOverBtn">Start Over</button>
         <button class="nav-btn nav-btn-primary" id="toTacticalBtn">Next: Tactical View ▶</button>
       </footer>
     </section>
@@ -211,15 +206,22 @@ export function renderScreenB(state) {
 }
 
 export function attachHandlersB(state) {
-  // Select Unit Giving IRR
+  // IMPORTANT: typing issues happen when a click handler is attached too broadly.
+  // Here we only attach to buttons with explicit selectors, never the whole document.
+
+  // IRR unit tap selection
   document.querySelectorAll(".irr-unit-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const id = btn.dataset.unitId;
-      if (id) setIrrField("irrUnitId", id);
+      const unitId = btn.dataset.unitId;
+      if (!unitId) return;
+      setIrrField("irrUnitId", unitId);
+
+      // Command starts with the IRR unit (no status changes)
+      setCommandHolder(unitId);
     });
   });
 
-  // Single + Multi group buttons
+  // Group buttons
   document.querySelectorAll("button.choice[data-key]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const key = btn.dataset.key;
@@ -250,31 +252,39 @@ export function attachHandlersB(state) {
     });
   });
 
-  // Inputs (these will still re-render—your app.js should preserve focus/cursor)
+  // Inputs
   const occOther = document.getElementById("irrOccupancyOther");
-  if (occOther) occOther.addEventListener("input", () => setIrrField("occupancyOther", occOther.value));
+  if (occOther) {
+    occOther.addEventListener("input", () => setIrrField("occupancyOther", occOther.value));
+  }
 
   const probFree = document.getElementById("irrProblemLocationText");
-  if (probFree) probFree.addEventListener("input", () => setIrrField("problemLocationText", probFree.value));
+  if (probFree) {
+    probFree.addEventListener("input", () => setIrrField("problemLocationText", probFree.value));
+  }
 
   const iapOther = document.getElementById("irrIapLocationOther");
-  if (iapOther) iapOther.addEventListener("input", () => setIrrField("iapLocationOther", iapOther.value));
+  if (iapOther) {
+    iapOther.addEventListener("input", () => setIrrField("iapLocationOther", iapOther.value));
+  }
 
+  // Command text -> also sets incident.incidentName automatically
   const cmd = document.getElementById("irrCommandText");
-  if (cmd) cmd.addEventListener("input", () => setIrrField("commandText", cmd.value));
+  if (cmd) {
+    cmd.addEventListener("input", () => {
+      setIrrField("commandText", cmd.value);
+      const incidentName = extractIncidentName(cmd.value);
+      setIncidentField("incidentName", incidentName);
+    });
+  }
 
   // Nav
-  const backBtn = document.getElementById("irrBackBtn");
-  if (backBtn) backBtn.addEventListener("click", () => setScreen("incident"));
-
   const startOverBtn = document.getElementById("irrStartOverBtn");
-  if (startOverBtn) startOverBtn.addEventListener("click", () => resetAll());
+  if (startOverBtn) startOverBtn.addEventListener("click", resetAll);
 
   const nextBtn = document.getElementById("toTacticalBtn");
   if (nextBtn) nextBtn.addEventListener("click", () => setScreen("tactical"));
 }
-
-/* ---------------- UI Helpers ---------------- */
 
 function renderButtonGroupHtml(key, irr, isSelected, isInArray) {
   const group = CONFIG.find((g) => g.key === key);
@@ -300,29 +310,25 @@ function renderButtonGroupHtml(key, irr, isSelected, isInArray) {
   return `${title}<div class="grid">${buttons}</div>`;
 }
 
-/* ---------------- Text Builder (Size Up logic + From [IRR Unit]) ---------------- */
+/* ---------- Text builder (radio style) ---------- */
 
 function optionPhrase(groupKey, value){
   const group = CONFIG.find(g => g.key === groupKey);
   if (!group) return "";
   return (group.options.find(o => o.value === value)?.phrase || "").trim();
 }
-
 function singlePhrase(irr, key){
   const val = irr[key];
   if (!val) return "";
   return optionPhrase(key, val);
 }
-
 function multiList(irr, key){
   const arr = Array.isArray(irr[key]) ? irr[key] : [];
   return arr.filter(Boolean);
 }
-
 function niceSidesDisplay(sidesArr){
   return sidesArr.map(s => s.toLowerCase()).join(" ");
 }
-
 function mapIapLocation(val){
   if (!val) return "";
   const lower = String(val).toLowerCase();
@@ -330,7 +336,6 @@ function mapIapLocation(val){
   if (lower.includes("floor")) return lower;
   return lower;
 }
-
 function buildIapLocationPhrase(iapLocArr, otherText){
   const arr = Array.isArray(iapLocArr) ? iapLocArr : [];
   const parts = [];
@@ -343,14 +348,22 @@ function buildIapLocationPhrase(iapLocArr, otherText){
   const uniq = [...new Set(parts)].filter(Boolean);
   return uniq.join(", ");
 }
-
-function normalizeCommandName(raw){
-  let s = (raw || "").trim();
+function extractIncidentName(commandText){
+  // Accept either:
+  // 1) "Main St Command"
+  // 2) "Trk 1 is now Main St Command"
+  // 3) "Main St" (we keep as-is)
+  let s = (commandText || "").trim();
   if (!s) return "";
-  if (/command\.?$/i.test(s)) return s.replace(/\.*$/,"");
-  return `${s} Command`;
-}
 
+  // remove trailing "Command"
+  s = s.replace(/\bcommand\b\.?$/i, "").trim();
+
+  // remove leading "X is now"
+  s = s.replace(/^\s*[A-Za-z0-9]+\s*\d*\s*is\s*now\s+/i, "").trim();
+
+  return s;
+}
 function battalionDisplay(code){
   const c = (code || "").trim();
   if (c === "BC1") return "Battalion 1";
@@ -360,11 +373,12 @@ function battalionDisplay(code){
 
 function buildIrrText(state){
   const irr = state.irr || {};
-  const battalionArr = Array.isArray(state.incident?.battalion) ? state.incident.battalion : [];
-  const battalion = battalionDisplay(battalionArr[0] || "");
+  const incident = state.incident || {};
 
-  const irrUnit = ALL_UNITS.find((u) => u.id === irr.irrUnitId);
-  const apparatus = irrUnit ? irrUnit.label : ""; // ✅ From selected unit
+  const irrUnit = ALL_UNITS.find(u => u.id === irr.irrUnitId);
+  const fromUnit = irrUnit ? irrUnit.label : "";
+
+  const incidentName = (incident.incidentName || "").trim();
 
   const bSize = (irr.buildingSize || "").trim();
   const bHeight = singlePhrase(irr, "height");
@@ -389,34 +403,35 @@ function buildIrrText(state){
   const objectives = multiList(irr, "iapObjectives").map(v => optionPhrase("iapObjectives", v)).filter(Boolean);
 
   const strategy = (irr.strategy || "Offensive");
-  const cmdText = normalizeCommandName(irr.commandText);
 
   const buildingParts = [bSize, bHeight, occ].filter(Boolean);
   const buildingPhrase = buildingParts.length ? buildingParts.join(" ") : "a structure";
 
   let probPhrase = "";
-  if (sidesText && !locCombined) probPhrase = `${sidesText} side`;
-  else probPhrase = [sidesText ? `${sidesText} side` : "", locCombined].filter(Boolean).join(" ").trim();
+  if (sidesText && !locCombined) {
+    probPhrase = `${sidesText} side`;
+  } else {
+    probPhrase = [sidesText ? `${sidesText} side` : "", locCombined].filter(Boolean).join(" ").trim();
+  }
 
   const taskPhrase = tasks.length ? tasks.join(", ") : "";
   const objPhrase = objectives.length ? objectives.join(", ") : "";
 
   const line1 =
-    `${battalion ? battalion + " " : ""}` +
-    `${apparatus ? "From " + apparatus + ", " : ""}` +
+    `${fromUnit ? "From " + fromUnit + ", " : ""}` +
     `We are on scene with a ${buildingPhrase}` +
     `${condition ? ", with " + condition : ""}` +
     `${probPhrase ? " on the " + probPhrase : ""}.`;
 
   const line2 =
-    `${apparatus ? apparatus + " " : ""}` +
+    `${fromUnit ? fromUnit + " " : ""}` +
     `${taskPhrase ? "will be " + taskPhrase : "will be operating"}` +
     `${iapLocPhrase ? " on the " + iapLocPhrase : ""}` +
     `${objPhrase ? " for " + objPhrase : ""}.`;
 
   const line3 =
     `We will be in the ${strategy} strategy` +
-    `${cmdText ? ", we are " + cmdText : ""}.`;
+    `${incidentName ? `, ${fromUnit || "Unit"} is now ${incidentName} Command.` : "."}`;
 
   return [line1, line2, line3].join("\n\n");
 }
