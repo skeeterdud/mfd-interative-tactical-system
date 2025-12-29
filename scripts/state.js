@@ -84,6 +84,11 @@ const defaultState = () => ({
 
     // Benchmarks
     benchmarks: [],
+    
+    canvas: {
+      dataUrl: "",     // stores the drawing as a PNG data URL
+      updatedAt: "",   // optional timestamp
+    },
 
     // Follow-up
     followUp: {
@@ -278,6 +283,24 @@ export function setUnitAssignment(unitId, assignment) {
   );
   state = { ...state, tactical: { ...state.tactical, units: nextUnits } };
   emit();
+}
+export function setCanvasDataUrl(dataUrl) {
+  state = {
+    ...state,
+    tactical: {
+      ...state.tactical,
+      canvas: {
+        ...(state.tactical.canvas || {}),
+        dataUrl: dataUrl || "",
+        updatedAt: new Date().toISOString(),
+      },
+    },
+  };
+  emit();
+}
+
+export function clearCanvasDataUrl() {
+  setCanvasDataUrl("");
 }
 
 export function resetAll() {
