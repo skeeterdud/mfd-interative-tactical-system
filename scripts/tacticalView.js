@@ -1,4 +1,4 @@
-// tacticalView.js
+// scripts/tacticalView.js
 // Tactical Worksheet view for the MFD Interactive Tactical System
 
 import {
@@ -17,15 +17,18 @@ import {
 // ---------------------------------------------------------------------------
 
 export function renderTacticalView(state) {
-  const { incident, irr, tactical } = state;
+  const { incident, tactical } = state;
   const { callType, battalion, selectedUnitIds } = incident;
 
   const respondingUnits = (Array.isArray(selectedUnitIds) ? selectedUnitIds : [])
     .map((id) => ALL_UNITS.find((u) => u.id === id))
     .filter(Boolean);
 
+  // ✅ battalion can be an array now
   const battalionDisplayText =
-    battalionDisplay(battalion) || battalion || "Not set";
+    Array.isArray(battalion) && battalion.length
+      ? battalion.map(battalionDisplay).filter(Boolean).join(" / ")
+      : battalionDisplay(battalion) || battalion || "Not set";
 
   const irrText = buildIrrText(state);
 
@@ -132,26 +135,10 @@ export function renderTacticalView(state) {
           Tap a benchmark when it is completed. These will feed into the tactical summary.
         </p>
         <div class="benchmark-row">
-          ${renderBenchmarkButton(
-            "primarySearchAllClear",
-            "Primary Search All Clear",
-            completedBenchmarkIds
-          )}
-          ${renderBenchmarkButton(
-            "fireUnderControl",
-            "Fire Under Control",
-            completedBenchmarkIds
-          )}
-          ${renderBenchmarkButton(
-            "lossStopped",
-            "Loss Stopped",
-            completedBenchmarkIds
-          )}
-          ${renderBenchmarkButton(
-            "parComplete",
-            "PAR Complete",
-            completedBenchmarkIds
-          )}
+          ${renderBenchmarkButton("primarySearchAllClear","Primary Search All Clear",completedBenchmarkIds)}
+          ${renderBenchmarkButton("fireUnderControl","Fire Under Control",completedBenchmarkIds)}
+          ${renderBenchmarkButton("lossStopped","Loss Stopped",completedBenchmarkIds)}
+          ${renderBenchmarkButton("parComplete","PAR Complete",completedBenchmarkIds)}
         </div>
         ${
           tactical.benchmarks && tactical.benchmarks.length
@@ -171,11 +158,7 @@ export function renderTacticalView(state) {
                   return `
                     <li>
                       <strong>${b.label}</strong>
-                      ${
-                        unitLabels
-                          ? `&nbsp;–&nbsp;<span>${unitLabels}</span>`
-                          : ""
-                      }
+                      ${unitLabels ? `&nbsp;–&nbsp;<span>${unitLabels}</span>` : ""}
                       ${timeStr ? `&nbsp;@ ${timeStr}` : ""}
                     </li>
                   `;
@@ -298,7 +281,6 @@ export function attachTacticalHandlers() {
       const next = nextStatus(currentStatus);
       if (unitId && next) {
         setUnitStatus(unitId, next);
-        // state change will trigger a full re-render via subscribe
       }
     });
   });
@@ -314,12 +296,8 @@ export function attachTacticalHandlers() {
     updateTacticalOutput();
   };
 
-  if (icUnitSelect) {
-    icUnitSelect.addEventListener("change", applyCommandUpdate);
-  }
-  if (icNameInput) {
-    icNameInput.addEventListener("input", applyCommandUpdate);
-  }
+  if (icUnitSelect) icUnitSelect.addEventListener("change", applyCommandUpdate);
+  if (icNameInput) icNameInput.addEventListener("input", applyCommandUpdate);
 
   // Benchmarks
   document.querySelectorAll(".benchmark-btn").forEach((btn) => {
@@ -329,13 +307,9 @@ export function attachTacticalHandlers() {
       if (!id || !label) return;
 
       const state = getState();
-      const already = (state.tactical.benchmarks || []).some(
-        (b) => b.id === id
-      );
-      if (!already) {
-        // For now we don't associate specific units; that can be added later
-        addBenchmark(id, label, []);
-      }
+      const already = (state.tactical.benchmarks || []).some((b) => b.id === id);
+      if (!already) addBenchmark(id, label, []);
+
       updateTacticalOutput();
     });
   });
@@ -390,12 +364,15 @@ function renderBenchmarkButton(id, label, completedIds) {
 function updateTacticalOutput() {
   const state = getState();
   const { incident, tactical } = state;
+
+  // ✅ battalion can be array
   const battalionText =
-    battalionDisplay(incident.battalion) || incident.battalion || "Command";
+    Array.isArray(incident.battalion) && incident.battalion.length
+      ? incident.battalion.map(battalionDisplay).filter(Boolean).join(" / ")
+      : battalionDisplay(incident.battalion) || incident.battalion || "Command";
 
   const lines = [];
 
-  // Header
   lines.push(`${battalionText}: tactical update.`);
   lines.push("");
 
@@ -405,6 +382,7 @@ function updateTacticalOutput() {
       (u) => u.id === tactical.command.currentIcUnitId
     );
     const icLabel = icUnit ? icUnit.label : tactical.command.currentIcUnitId;
+
     lines.push(
       `Command: ${tactical.command.icName || "Command"}${
         icLabel ? ` (${icLabel})` : ""
@@ -416,28 +394,14 @@ function updateTacticalOutput() {
   // 360 + follow-up
   const f = tactical.followUp;
 
-  if (f.r360) {
-    lines.push(`360: ${f.r360}.`);
-  }
-  if (f.safety) {
-    lines.push(`Safety: ${f.safety}.`);
-  }
-  if (f.confirmStrategy) {
-    lines.push(`Strategy: ${f.confirmStrategy}.`);
-  }
-  if (f.confirmNotes) {
-    lines.push(`Notes: ${f.confirmNotes}.`);
-  }
-  if (f.resourceDetermination) {
-    lines.push(`Resources: ${f.resourceDetermination}.`);
-  }
-  if (f.additional) {
-    lines.push(`Additional: ${f.additional}.`);
-  }
+  if (f.r360) lines.push(`360: ${f.r360}.`);
+  if (f.safety) lines.push(`Safety: ${f.safety}.`);
+  if (f.confirmStrategy) lines.push(`Strategy: ${f.confirmStrategy}.`);
+  if (f.confirmNotes) lines.push(`Notes: ${f.confirmNotes}.`);
+  if (f.resourceDetermination) lines.push(`Resources: ${f.resourceDetermination}.`);
+  if (f.additional) lines.push(`Additional: ${f.additional}.`);
 
-  if (lines[lines.length - 1] !== "") {
-    lines.push("");
-  }
+  if (lines[lines.length - 1] !== "") lines.push("");
 
   // Benchmarks
   if (tactical.benchmarks && tactical.benchmarks.length) {
@@ -451,9 +415,9 @@ function updateTacticalOutput() {
         })
         .join(", ");
       lines.push(
-        `- ${b.label}${
-          unitLabels ? ` by ${unitLabels}` : ""
-        }${timeStr ? ` at ${timeStr}` : ""}.`
+        `- ${b.label}${unitLabels ? ` by ${unitLabels}` : ""}${
+          timeStr ? ` at ${timeStr}` : ""
+        }.`
       );
     });
   }
@@ -461,15 +425,13 @@ function updateTacticalOutput() {
   const text = lines.join("\n");
 
   const outEl = document.getElementById("tacticalOutputBox");
-  if (outEl) {
-    outEl.textContent = text;
-  }
+  if (outEl) outEl.textContent = text;
 
   setFollowUpGeneratedText(text);
 }
 
 // ---------------------------------------------------------------------------
-// Shared helpers (mirroring logic from app.js IRR builder)
+// Shared helpers (mirroring app.js IRR builder)
 // ---------------------------------------------------------------------------
 
 function battalionDisplay(code) {
@@ -481,7 +443,13 @@ function battalionDisplay(code) {
 
 function buildIrrText(state) {
   const { incident, irr } = state;
-  const battalionText = battalionDisplay(incident.battalion);
+
+  // For the IRR preview, keep “spoken” style: use first battalion if multiple
+  const bcSpeech = Array.isArray(incident.battalion)
+    ? incident.battalion[0]
+    : incident.battalion;
+
+  const battalionText = battalionDisplay(bcSpeech);
 
   const irrUnit = ALL_UNITS.find((u) => u.id === irr.irrUnitId);
   const unitLabel = irrUnit ? irrUnit.label : "";
@@ -489,21 +457,13 @@ function buildIrrText(state) {
   const size = irr.buildingSize ? String(irr.buildingSize).toLowerCase() : "";
   const height = irr.height ? `${irr.height} story` : "";
 
-  // Occupancy
   let occ = "";
-  if (irr.occupancy === "other" && irr.occupancyOther) {
-    occ = irr.occupancyOther;
-  } else if (irr.occupancy === "house") {
-    occ = "house";
-  } else if (irr.occupancy === "apartment") {
-    occ = "apartment";
-  } else if (irr.occupancy === "strip") {
-    occ = "strip center";
-  } else if (irr.occupancy === "commercial") {
-    occ = "commercial building";
-  }
+  if (irr.occupancy === "other" && irr.occupancyOther) occ = irr.occupancyOther;
+  else if (irr.occupancy === "house") occ = "house";
+  else if (irr.occupancy === "apartment") occ = "apartment";
+  else if (irr.occupancy === "strip") occ = "strip center";
+  else if (irr.occupancy === "commercial") occ = "commercial building";
 
-  // Conditions
   const condMap = {
     nothing: "nothing showing",
     light: "light smoke",
@@ -513,21 +473,15 @@ function buildIrrText(state) {
   };
   const cond = irr.conditions ? condMap[irr.conditions] || "" : "";
 
-  // Problem location (sides + free text)
   const sides = Array.isArray(irr.problemSides) ? irr.problemSides : [];
   const sidesText = sides.map((s) => String(s).toLowerCase()).join(" / ");
   const locFree = (irr.problemLocationText || "").trim();
 
   let probPhrase = "";
-  if (locFree && sides.length) {
-    probPhrase = `${sidesText} ${locFree}`.trim();
-  } else if (locFree && !sides.length) {
-    probPhrase = locFree;
-  } else if (!locFree && sides.length === 1) {
-    probPhrase = `${sidesText} side`;
-  } else if (!locFree && sides.length > 1) {
-    probPhrase = `${sidesText} sides`;
-  }
+  if (locFree && sides.length) probPhrase = `${sidesText} ${locFree}`.trim();
+  else if (locFree && !sides.length) probPhrase = locFree;
+  else if (!locFree && sides.length === 1) probPhrase = `${sidesText} side`;
+  else if (!locFree && sides.length > 1) probPhrase = `${sidesText} sides`;
 
   const tasks = Array.isArray(irr.iapTasks) ? irr.iapTasks : [];
   const objectives = Array.isArray(irr.iapObjectives) ? irr.iapObjectives : [];
@@ -578,23 +532,17 @@ function mapIapLocation(loc) {
   if (!loc) return "";
   const lower = String(loc).toLowerCase();
 
-  if (["alpha", "bravo", "charlie", "delta"].includes(lower)) {
-    return `${lower} side`;
-  }
-  if (lower.includes("floor")) {
-    return lower;
-  }
+  if (["alpha", "bravo", "charlie", "delta"].includes(lower)) return `${lower} side`;
+  if (lower.includes("floor")) return lower;
+
   return lower;
 }
 
 function normalizeCommandName(raw, unitLabel) {
   let s = (raw || "").trim();
-
   if (!s && unitLabel) return `${unitLabel} is now Command`;
   if (!s) return "";
-
   if (/command\.?$/i.test(s)) return s.replace(/\.*$/, "");
-
   return `${s} Command`;
 }
 
