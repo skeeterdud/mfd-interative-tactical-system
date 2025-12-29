@@ -528,3 +528,252 @@ button.choice.small{
 .nav-btn-danger:hover{
   filter: brightness(1.03);
 }
+/* ---------------- Screen C: Canvas + Bottom Tabs ---------------- */
+
+.tactical-shell{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.canvas-card{
+  background: rgba(18,26,43,.75);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius:16px;
+  overflow:hidden;
+}
+
+.canvas-topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 12px;
+  background: rgba(17,31,66,.90);
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
+
+.canvas-title-main{
+  font-size:14px;
+  font-weight:900;
+}
+.canvas-title-sub{
+  font-size:12px;
+  opacity:.85;
+}
+
+.canvas-wrap{
+  height: 48vh;
+  min-height: 320px;
+  background: rgba(255,255,255,.06);
+}
+
+.tactical-canvas{
+  width:100%;
+  height:100%;
+  display:block;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.tab-card{
+  background: rgba(18,26,43,.75);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius:16px;
+  padding:12px;
+}
+
+.bottom-tabs{
+  display:flex;
+  gap:8px;
+  position: sticky;
+  bottom: 0;
+  padding:10px;
+  background: rgba(11,26,58,.92);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius:16px;
+  backdrop-filter: blur(10px);
+}
+
+.bottom-tab{
+  flex:1;
+  padding:10px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(15,23,42,.7);
+  color:#e9eefc;
+  font-weight:800;
+  cursor:pointer;
+}
+.bottom-tab.active{
+  background:#2563eb;
+  border-color:#2563eb;
+}
+
+/* Units board */
+.unit-board{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+@media (max-width: 900px){
+  .unit-board{grid-template-columns:1fr;}
+}
+
+.unit-card{
+  width:100%;
+  text-align:left;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  padding:12px;
+  color:#e9eefc;
+  cursor:pointer;
+}
+
+.unit-card-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+
+.unit-name{
+  font-size:16px;
+  font-weight:900;
+}
+
+.unit-status-pill{
+  font-size:12px;
+  font-weight:900;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.18);
+  background: rgba(0,0,0,.15);
+}
+
+.unit-status-row{
+  margin-top:10px;
+}
+
+.status-bubbles{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.bubble{
+  font-size:12px;
+  font-weight:900;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.18);
+  opacity:.75;
+}
+.bubble.on{
+  opacity:1;
+  background:#2563eb;
+  border-color:#2563eb;
+}
+
+.unit-assign{
+  margin-top:10px;
+  font-size:12px;
+  line-height:1.35;
+}
+.unit-assign.muted{
+  opacity:.75;
+}
+
+/* Status color hints */
+.unit-card.status-enroute{ outline: 0; }
+.unit-card.status-level1{ box-shadow: 0 0 0 2px rgba(253, 230, 138, .35); }
+.unit-card.status-assigned{ box-shadow: 0 0 0 2px rgba(34, 197, 94, .30); }
+
+/* Benchmarks buttons */
+.benchmark-row{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.benchmark-btn{
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.06);
+  color:#e9eefc;
+  padding:10px 12px;
+  font-weight:900;
+  cursor:pointer;
+}
+.benchmark-btn.completed{
+  background:#16a34a;
+  border-color:#16a34a;
+}
+
+/* Modal */
+.modal-backdrop{
+  position:fixed;
+  inset:0;
+  background: rgba(0,0,0,.55);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+  z-index:50;
+}
+.modal{
+  width:min(980px, 100%);
+  max-height: 88vh;
+  overflow:auto;
+  border-radius:16px;
+  background: rgba(18,26,43,.95);
+  border:1px solid rgba(255,255,255,.14);
+  padding:12px;
+}
+.modal-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  padding-bottom:10px;
+  border-bottom:1px solid rgba(255,255,255,.10);
+}
+.modal-title{
+  font-size:16px;
+  font-weight:900;
+}
+.modal-sub{
+  font-size:12px;
+  opacity:.8;
+}
+.modal-x{
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.06);
+  color:#e9eefc;
+  font-weight:900;
+  padding:8px 10px;
+  cursor:pointer;
+}
+.modal-body{
+  padding-top:10px;
+}
+.modal-footer{
+  display:flex;
+  gap:10px;
+  padding-top:10px;
+  border-top:1px solid rgba(255,255,255,.10);
+}
+
+/* Print rules: hide tabs + modal + canvas controls */
+@media print {
+  .bottom-tabs,
+  .canvas-actions,
+  .modal-backdrop,
+  #printBtn,
+  #backToIrrBtn {
+    display:none !important;
+  }
+  .canvas-wrap{
+    height: 350px;
+  }
+}
