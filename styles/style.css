@@ -51,6 +51,7 @@ body::before{
   padding:12px;
 }
 
+/* Top Bar */
 .top-bar{
   padding:14px 16px;
   background: rgba(17,31,66,.90);
@@ -69,6 +70,7 @@ body::before{
   margin-top:2px;
 }
 
+/* Tabs */
 .screen-tabs{
   display:flex;
   gap:8px;
@@ -91,12 +93,14 @@ body::before{
   border-color:#2563eb;
 }
 
+/* Main Container */
 .screen-container{
   display:flex;
   flex-direction:column;
   gap:12px;
 }
 
+/* Titles */
 .screen-title{
   margin:0 0 4px 0;
   font-size:18px;
@@ -116,7 +120,16 @@ body::before{
   padding:12px;
 }
 
-/* Optional “block” style (if you still use it anywhere) */
+/* You use .card-title in app.js — define it so it looks clean */
+.card-title{
+  margin:0 0 10px 0;
+  font-size:14px;
+  letter-spacing:.5px;
+  text-transform:uppercase;
+  color:#c7d2fe;
+}
+
+/* Optional “block” style (if still used anywhere) */
 .block{
   border-radius:16px;
   padding:12px;
@@ -131,7 +144,7 @@ body::before{
   color:var(--text);
 }
 
-/* Generic helpers */
+/* Helpers */
 .helper-text{
   font-size:12px;
   color:rgba(233,238,252,.75);
@@ -199,7 +212,7 @@ body::before{
 }
 
 /* =========================================================
-   BUTTONS: "choice" buttons (used by your Tactical/IRR screens)
+   BUTTONS: Smart-board friendly "choice" buttons
    ========================================================= */
 button.choice{
   border:1px solid rgba(0,0,0,.10);
@@ -222,11 +235,7 @@ button.choice.selected{
   box-shadow:0 10px 22px rgba(37,99,235,.22);
 }
 
-/* =========================================================
-   GRIDS
-   ========================================================= */
-
-/* Generic grid (if still used anywhere) */
+/* Generic grid (if you still use .grid anywhere) */
 .grid{
   display:grid;
   grid-template-columns:repeat(4,minmax(0,1fr));
@@ -277,14 +286,14 @@ button.choice.selected{
   gap:10px;
 }
 
-/* Optional: keep row buttons consistently wide for smart board taps */
+/* make taps easier + uniform button widths in each row */
 .unit-grid-row .choice{
   min-width:120px;
 }
 
 /* =========================================================
-   OPTIONAL: if you still use the old "incident-setup" component
-   (kept here but won't conflict with the new Screen A)
+   Optional legacy "incident-setup" styles (safe to keep)
+   (won't conflict with current Screen A)
    ========================================================= */
 .incident-setup{
   display:flex;
@@ -324,7 +333,6 @@ button.choice.selected{
   opacity:.85;
 }
 
-/* Pills (if you still use them anywhere) */
 .pill{
   border-radius:999px;
   padding:8px 14px;
