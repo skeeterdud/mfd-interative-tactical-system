@@ -1,5 +1,5 @@
 // app.js
-// Main UI controller for MFD Size Up Trainer
+// Main UI controller for MFD Interactive Tactical System
 
 import {
   getState,
@@ -67,7 +67,7 @@ function render(state) {
   rootEl.innerHTML = `
     <div class="app-shell">
       <header class="top-bar">
-        <div class="app-title">MFD Size Up Trainer</div>
+        <div class="app-title">MFD Interactive Tactical System</div>
       </header>
       <main class="screen-container">
         ${screenHtml}
@@ -79,7 +79,7 @@ function render(state) {
 }
 
 // ---------------------------------------------------------------------
-// SCREEN A: INCIDENT / BATTALION & UNITS
+// SCREEN A: BATTALION / APPARATUS / UNITS
 // ---------------------------------------------------------------------
 function renderIncidentScreen(state) {
   const incident = state.incident || {};
@@ -100,7 +100,7 @@ function renderIncidentScreen(state) {
 
   return `
     <section class="screen screen-incident">
-      <h2>Screen A – Incident / Battalion & Units</h2>
+      <h2>Screen A – Battalion / Apparatus</h2>
 
       <div class="incident-grid">
         <div class="incident-row">
@@ -220,6 +220,7 @@ function renderIrrScreen(state) {
       <div class="screen-actions irr-actions">
         <button type="button" data-action="generate-sizeup">Generate Size-Up</button>
         <div class="irr-bottom-buttons">
+          <button type="button" data-next-screen="incident">Back: Battalion/Apparatus</button>
           <button type="button" data-action="start-over">Start Over</button>
           <button type="button" data-next-screen="followup">Follow Up</button>
         </div>
@@ -229,7 +230,7 @@ function renderIrrScreen(state) {
 }
 
 // ---------------------------------------------------------------------
-// SCREEN C: FOLLOW-UP / ASSIGNMENTS BOARD
+// SCREEN C: FOLLOW-UP / TACTICAL BOARD
 // ---------------------------------------------------------------------
 function renderFollowupScreen(state) {
   const incident = state.incident || {};
@@ -563,6 +564,7 @@ function wireIrrHandlers() {
       const val = btn.getAttribute("data-strategy-confirm");
       if (!val) return;
       setIrrField("confirmedStrategy", val);
+      // "KEEP" just records but doesn't change assignments, per your direction.
     });
   });
 
@@ -570,6 +572,7 @@ function wireIrrHandlers() {
   const startOverBtn = document.querySelector("[data-action='start-over']");
   if (startOverBtn) {
     startOverBtn.addEventListener("click", () => {
+      // Simple reset – you can replace with a dedicated resetState() if you add one to state.js
       window.location.reload();
     });
   }
@@ -721,6 +724,8 @@ function wireFollowupHandlers() {
   const printBtn = root.querySelector("[data-action='print-all']");
   if (printBtn) {
     printBtn.addEventListener("click", () => {
+      // This will print whatever is on screen; if you later want
+      // all three views, you can build a dedicated "print view" screen.
       window.print();
     });
   }
@@ -836,6 +841,7 @@ function updateAssignmentStatus(assignmentId, status) {
 }
 
 function handleBenchmarkMark(name) {
+  // Simple prompt-based unit capture for now
   const units = prompt(
     `Benchmark: ${name}\n\nEnter units (e.g. "Eng 2, Trk 1"):`,
     ""
